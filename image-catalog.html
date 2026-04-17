@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visible · Client Image Catalog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Hurricane&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --teal: #00B4B1;
+    --navy: #0D1B2A;
+    --magenta: #C94080;
+    --cream: #F5EFE0;
+    --gold: #D4A843;
+    --ink: #0D1B2A;
+    --paper: #F5EFE0;
+    --line: rgba(13, 27, 42, 0.12);
+    --shadow: 0 1px 0 rgba(13, 27, 42, 0.04), 0 8px 24px -12px rgba(13, 27, 42, 0.15);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--paper); color: var(--ink);
+    font-family: 'DM Sans', sans-serif; font-size: 15px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; min-height: 100vh;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 90% -10%, rgba(0, 180, 177, 0.08), transparent 45%),
+      radial-gradient(circle at -5% 110%, rgba(201, 64, 128, 0.06), transparent 40%);
+  }
+  .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  aside {
+    background: var(--navy);
+    color: var(--cream);
+    padding: 28px 20px;
+    display: flex; flex-direction: column; gap: 20px;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .brand { padding-bottom: 16px; border-bottom: 1px solid rgba(245,239,224,0.12); }
+  .brand .kicker {
+    font-family: 'Hurricane', cursive; font-size: 22px; color: var(--magenta);
+    line-height: 1; margin-bottom: -2px;
+  }
+  .brand h1 {
+    font-family: 'Bebas Neue', sans-serif; font-size: 34px; letter-spacing: 0.03em;
+    line-height: 0.95; color: var(--cream);
+  }
+  .brand h1 span { color: var(--teal); }
+
+  .section-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.15em;
+    color: rgba(245,239,224,0.45); margin-bottom: 10px;
+  }
+
+  .client-list { display: flex; flex-direction: column; gap: 2px; }
+  .client-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; border-radius: 5px; cursor: pointer;
+    font-size: 14px; color: rgba(245,239,224,0.75); transition: all 0.15s;
+  }
+  .client-item:hover { background: rgba(245,239,224,0.06); color: var(--cream); }
+  .client-item.active { background: var(--teal); color: var(--navy); font-weight: 500; }
+  .client-item .count {
+    font-size: 11px; background: rgba(13,27,42,0.15); padding: 2px 7px;
+    border-radius: 10px; font-family: 'JetBrains Mono', monospace;
+  }
+  .client-item.active .count { background: rgba(13,27,42,0.2); color: var(--navy); }
+
+  .btn-new {
+    background: transparent; border: 1.5px dashed rgba(245,239,224,0.3);
+    color: rgba(245,239,224,0.7); padding: 10px; border-radius: 5px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer;
+    transition: all 0.15s; text-align: left;
+  }
+  .btn-new:hover { border-color: var(--teal); color: var(--teal); }
+
+  .btn-help {
+    background: rgba(212,168,67,0.08);
+    border: 1px solid rgba(212,168,67,0.25);
+    color: var(--gold); padding: 10px 12px; border-radius: 5px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 500;
+  }
+  .btn-help:hover {
+    background: rgba(212,168,67,0.15);
+    border-color: var(--gold);
+  }
+
+  aside footer {
+    margin-top: auto; padding-top: 20px; font-size: 11px;
+    color: rgba(245,239,224,0.4); border-top: 1px solid rgba(245,239,224,0.1);
+  }
+  aside footer .script {
+    font-family: 'Hurricane', cursive; font-size: 18px; color: var(--magenta);
+    display: block; line-height: 1; margin-bottom: 2px;
+  }
+
+  /* Main */
+  main { padding: 36px 40px 80px; max-width: 1100px; }
+
+  .client-header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--line);
+    gap: 24px; flex-wrap: wrap;
+  }
+  .client-header h2 {
+    font-family: 'Bebas Neue', sans-serif; font-size: 48px;
+    letter-spacing: 0.02em; line-height: 1; color: var(--navy);
+  }
+  .client-header h2 .edit {
+    margin-left: 10px; font-size: 13px; color: rgba(13,27,42,0.4);
+    cursor: pointer; vertical-align: 8px; font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0;
+  }
+  .client-header h2 .edit:hover { color: var(--teal); }
+  .client-meta {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: rgba(13,27,42,0.55); margin-top: 6px;
+  }
+
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    padding: 10px 16px; border-radius: 5px; cursor: pointer; border: none;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--navy); color: var(--cream); }
+  .btn-primary:hover { background: var(--teal); color: var(--navy); }
+  .btn-secondary { background: transparent; color: var(--navy); border: 1.5px solid var(--line); }
+  .btn-secondary:hover { border-color: var(--teal); color: var(--teal); }
+  .btn-danger { background: transparent; color: rgba(201, 64, 128, 0.8); border: 1.5px solid rgba(201, 64, 128, 0.2); }
+  .btn-danger:hover { border-color: var(--magenta); color: var(--magenta); }
+
+  /* Add image tabs */
+  .add-tabs { display: flex; gap: 0; margin-bottom: -1px; }
+  .add-tab {
+    font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 0.06em;
+    background: transparent; border: 1px solid var(--line); border-bottom: none;
+    padding: 10px 20px; cursor: pointer; color: rgba(13,27,42,0.5);
+    border-radius: 6px 6px 0 0; transition: all 0.15s;
+  }
+  .add-tab:hover { color: var(--navy); }
+  .add-tab.active { background: #FFFDF7; color: var(--navy); }
+  .add-tab + .add-tab { margin-left: -1px; }
+
+  section.card {
+    background: #FFFDF7; border: 1px solid var(--line); border-radius: 6px;
+    padding: 24px; margin-bottom: 28px; box-shadow: var(--shadow);
+  }
+  section.card.with-tabs { border-top-left-radius: 0; }
+
+  h3 {
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    letter-spacing: 0.04em; color: var(--navy); margin-bottom: 4px;
+  }
+  .sub {
+    font-size: 13px; color: rgba(13,27,42,0.6); margin-bottom: 18px;
+  }
+
+  .form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .form-row label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: rgba(13,27,42,0.55); font-weight: 500;
+  }
+  .form-row input, .form-row textarea, .form-row select {
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 4px;
+    background: #fff; color: var(--navy); outline: none;
+    transition: border-color 0.15s; resize: vertical;
+  }
+  .form-row input.mono, .form-row textarea.mono {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  }
+  .form-row input:focus, .form-row textarea:focus, .form-row select:focus {
+    border-color: var(--teal);
+  }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .dropzone {
+    border: 2px dashed rgba(13,27,42,0.22); border-radius: 5px;
+    padding: 32px 20px; text-align: center; cursor: pointer;
+    transition: all 0.15s; background: rgba(0,180,177,0.02); margin-bottom: 14px;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--teal); background: rgba(0,180,177,0.06);
+  }
+  .dropzone-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px;
+    letter-spacing: 0.04em; color: var(--navy);
+  }
+  .dropzone-hint { font-size: 12px; color: rgba(13,27,42,0.5); margin-top: 2px; }
+  .dropzone input[type=file] { display: none; }
+
+  .add-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+  .add-hint { font-size: 12px; color: rgba(13,27,42,0.5); }
+
+  /* Image list */
+  .image-list-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px; gap: 16px; flex-wrap: wrap;
+  }
+  .search-input {
+    flex: 1; min-width: 200px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 5px;
+    background: #fff; outline: none;
+  }
+  .search-input:focus { border-color: var(--teal); }
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11px; padding: 6px 12px; border-radius: 14px;
+    background: transparent; border: 1px solid var(--line);
+    color: rgba(13,27,42,0.6); cursor: pointer; transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .chip:hover { border-color: var(--teal); color: var(--teal); }
+  .chip.active { background: var(--navy); color: var(--cream); border-color: var(--navy); }
+
+  .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+  .image-card {
+    background: #FFFDF7; border: 1px solid var(--line); border-radius: 6px;
+    overflow: hidden; transition: all 0.15s; display: flex; flex-direction: column;
+  }
+  .image-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+
+  .image-card .thumb {
+    aspect-ratio: 16/10; background: var(--navy);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+  }
+  .image-card .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .image-card .thumb .broken {
+    color: rgba(245,239,224,0.4); font-family: 'Hurricane', cursive;
+    font-size: 28px;
+  }
+  .image-card .source-badge {
+    position: absolute; top: 8px; right: 8px;
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 3px 8px; border-radius: 10px; font-weight: 500;
+    backdrop-filter: blur(4px);
+  }
+  .source-badge.wix { background: rgba(0,180,177,0.9); color: var(--navy); }
+  .source-badge.github { background: rgba(212,168,67,0.9); color: var(--navy); }
+  .source-badge.other { background: rgba(201,64,128,0.9); color: #fff; }
+
+  .image-card .body { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .image-card .name {
+    font-weight: 500; color: var(--navy); font-size: 14px; line-height: 1.3;
+  }
+  .image-card .desc {
+    font-size: 12px; color: rgba(13,27,42,0.6); line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .image-card .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .image-card .tags .tag {
+    font-size: 10px; padding: 2px 7px; background: rgba(0,180,177,0.1);
+    color: var(--teal); border-radius: 9px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .image-card .tags .tag.used {
+    background: rgba(212,168,67,0.15); color: #b08a2b;
+  }
+
+  .image-card .actions {
+    display: flex; gap: 0; border-top: 1px solid var(--line);
+    margin-top: auto;
+  }
+  .image-card .actions button {
+    flex: 1; background: transparent; border: none; padding: 8px;
+    font-size: 11px; color: rgba(13,27,42,0.6); cursor: pointer;
+    transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+    font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .image-card .actions button + button { border-left: 1px solid var(--line); }
+  .image-card .actions button:hover { background: var(--paper); color: var(--navy); }
+  .image-card .actions button.danger:hover { background: rgba(201,64,128,0.08); color: var(--magenta); }
+
+  /* Empty */
+  .empty-state {
+    text-align: center; padding: 48px 24px; color: rgba(13,27,42,0.45); font-size: 14px;
+  }
+  .empty-state .big {
+    font-family: 'Hurricane', cursive; font-size: 44px; color: var(--magenta);
+    margin-bottom: 6px; line-height: 1;
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(13,27,42,0.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 50; padding: 20px; backdrop-filter: blur(4px);
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--paper); border-radius: 8px; padding: 28px;
+    max-width: 640px; width: 100%; max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(13,27,42,0.4);
+  }
+  .modal h3 { font-size: 24px; margin-bottom: 4px; }
+  .modal-actions {
+    display: flex; justify-content: flex-end; gap: 8px;
+    margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line);
+  }
+
+  /* Help modal - larger and styled like a doc */
+  .modal.help-modal { max-width: 780px; }
+  .help-content {
+    font-size: 14px; line-height: 1.65; color: var(--ink);
+  }
+  .help-content h4 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px; letter-spacing: 0.04em;
+    color: var(--navy); margin: 24px 0 6px;
+    padding-top: 20px; border-top: 1px solid var(--line);
+  }
+  .help-content h4:first-of-type { padding-top: 0; border-top: none; margin-top: 8px; }
+  .help-content h4 .step-num {
+    display: inline-block; background: var(--teal); color: var(--navy);
+    width: 28px; height: 28px; border-radius: 50%; text-align: center;
+    line-height: 28px; margin-right: 10px; font-size: 15px;
+    font-family: 'DM Sans', sans-serif; font-weight: 700;
+    vertical-align: 2px;
+  }
+  .help-content h5 {
+    font-size: 13px; font-weight: 700; color: var(--magenta);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin: 14px 0 6px;
+  }
+  .help-content p { margin-bottom: 10px; }
+  .help-content ul, .help-content ol { margin: 8px 0 12px 20px; }
+  .help-content li { margin-bottom: 6px; }
+  .help-content code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: rgba(13,27,42,0.06); padding: 2px 6px;
+    border-radius: 3px; color: var(--navy);
+  }
+  .help-content .tip-box {
+    background: rgba(0,180,177,0.08);
+    border-left: 3px solid var(--teal);
+    padding: 12px 16px; border-radius: 4px;
+    margin: 12px 0; font-size: 13px;
+  }
+  .help-content .tip-box strong { color: var(--navy); }
+  .help-content .warn-box {
+    background: rgba(201,64,128,0.08);
+    border-left: 3px solid var(--magenta);
+    padding: 12px 16px; border-radius: 4px;
+    margin: 12px 0; font-size: 13px;
+  }
+  .help-content .intro {
+    font-size: 15px; color: rgba(13,27,42,0.75);
+    padding: 14px 18px; background: var(--paper);
+    border-radius: 5px; margin-bottom: 16px;
+    line-height: 1.6;
+  }
+  .help-content .intro strong { color: var(--navy); }
+  .help-toc {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px 0 14px; margin-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .help-toc a {
+    font-size: 11px; padding: 5px 11px; border-radius: 12px;
+    background: var(--navy); color: var(--cream);
+    text-decoration: none; transition: all 0.15s;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .help-toc a:hover { background: var(--teal); color: var(--navy); }
+
+  /* Export output */
+  .export-tabs { display: flex; gap: 4px; margin-bottom: 0; }
+  .export-tab {
+    font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
+    padding: 8px 14px; border: 1px solid var(--line); border-bottom: none;
+    background: transparent; cursor: pointer; border-radius: 5px 5px 0 0;
+    color: rgba(13,27,42,0.6); transition: all 0.15s;
+  }
+  .export-tab.active { background: var(--navy); color: var(--cream); border-color: var(--navy); }
+
+  pre.export {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: var(--navy); color: var(--cream); padding: 18px;
+    border-radius: 0 5px 5px 5px; overflow-x: auto; line-height: 1.55;
+    max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--navy); color: var(--cream); padding: 12px 24px;
+    border-radius: 5px; font-size: 14px; box-shadow: 0 8px 32px rgba(13,27,42,0.3);
+    opacity: 0; transition: all 0.25s cubic-bezier(0.22,1,0.36,1);
+    pointer-events: none; z-index: 100;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* Mobile */
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { position: relative; height: auto; }
+    main { padding: 24px 20px 60px; }
+    .client-header h2 { font-size: 36px; }
+    .form-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <aside>
+    <div class="brand">
+      <span class="kicker">visible ·</span>
+      <h1>Image <span>Catalog</span></h1>
+    </div>
+
+    <div>
+      <div class="section-label">Clients</div>
+      <div class="client-list" id="clientList"></div>
+    </div>
+
+    <button class="btn-new" id="newClientBtn">+ New client</button>
+
+    <button class="btn-help" id="helpBtn">
+      <span>How to use this tool</span>
+      <span style="font-family:'Hurricane',cursive; font-size:20px; color:var(--gold); line-height:0.8">?</span>
+    </button>
+
+    <footer>
+      <span class="script">stay visible</span>
+      your images, indexed
+    </footer>
+  </aside>
+
+  <main id="mainPane">
+    <!-- Content rendered by JS -->
+  </main>
+
+</div>
+
+<!-- Modal: new client -->
+<div class="modal-backdrop" id="clientModal">
+  <div class="modal">
+    <h3 id="clientModalTitle">New client</h3>
+    <p class="sub">Set up a workspace for a client's images. You can add both Wix-hosted and GitHub-hosted images to it.</p>
+
+    <div class="form-row">
+      <label>Client name</label>
+      <input type="text" id="modalClientName" placeholder="Fire Door Services" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <label>Wix site URL (optional)</label>
+      <input type="text" id="modalWixUrl" class="mono" placeholder="https://firedoorservices.com" autocomplete="off">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>GitHub user</label>
+        <input type="text" id="modalGhUser" class="mono" value="therealerikap" autocomplete="off">
+      </div>
+      <div class="form-row">
+        <label>GitHub repo (for new images)</label>
+        <input type="text" id="modalGhRepo" class="mono" placeholder="fds-assets" autocomplete="off">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Notes (optional)</label>
+      <textarea id="modalNotes" rows="2" placeholder="Anything Claude should know about this client's image style or conventions"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+      <button class="btn btn-primary" id="modalSave">Save client</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: export -->
+<div class="modal-backdrop" id="exportModal">
+  <div class="modal">
+    <h3>Claude-ready export</h3>
+    <p class="sub">Paste this into any Claude chat when working on this client's pages. Claude will know every image available, where it lives, and what it's for.</p>
+
+    <div class="export-tabs">
+      <button class="export-tab active" data-format="md">Markdown (recommended)</button>
+      <button class="export-tab" data-format="json">JSON</button>
+    </div>
+    <pre class="export" id="exportOutput">—</pre>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="exportDownload">Download file</button>
+      <button class="btn btn-secondary" id="exportCopy">Copy to clipboard</button>
+      <button class="btn btn-primary" id="exportClose">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: edit image -->
+<div class="modal-backdrop" id="imageModal">
+  <div class="modal">
+    <h3 id="imageModalTitle">Edit image</h3>
+    <p class="sub">Update what Claude knows about this image.</p>
+
+    <div class="form-row">
+      <label>Name / label</label>
+      <input type="text" id="imgName" placeholder="Hero image — homepage">
+    </div>
+    <div class="form-row">
+      <label>URL</label>
+      <input type="text" id="imgUrl" class="mono">
+    </div>
+    <div class="form-row">
+      <label>Description (what's in the image, what it's for)</label>
+      <textarea id="imgDesc" rows="3" placeholder="Exterior shot of a commercial fire door, used on the services page hero"></textarea>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Tags (comma-separated)</label>
+        <input type="text" id="imgTags" placeholder="hero, services, exterior">
+      </div>
+      <div class="form-row">
+        <label>Used on pages</label>
+        <input type="text" id="imgPages" placeholder="homepage, services">
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Alt text</label>
+      <input type="text" id="imgAlt">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="imgDelete" style="margin-right:auto">Delete</button>
+      <button class="btn btn-secondary" id="imgCancel">Cancel</button>
+      <button class="btn btn-primary" id="imgSave">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: help / instructions -->
+<div class="modal-backdrop" id="helpModal">
+  <div class="modal help-modal">
+    <h3>How to use the Image Catalog</h3>
+    <p class="sub">A reference for you, your team, or anyone you hand this off to. You can reopen this anytime.</p>
+
+    <div class="help-toc">
+      <a href="#h-what">What it does</a>
+      <a href="#h-setup">Setting up a client</a>
+      <a href="#h-wix">Adding Wix images</a>
+      <a href="#h-github">Adding GitHub images</a>
+      <a href="#h-export">Using the export</a>
+      <a href="#h-tips">Tips & gotchas</a>
+      <a href="#h-handoff">Handing this off</a>
+    </div>
+
+    <div class="help-content">
+
+      <div class="intro">
+        <strong>The short version:</strong> This tool keeps a running list of every image on a client's website — whether it's hosted on Wix or on GitHub — along with what each image is of and where it's used. When you start a new Claude chat to build a page, you paste the exported catalog and Claude knows exactly which images to use instead of making up placeholders.
+      </div>
+
+      <h4 id="h-what"><span class="step-num">1</span> What this tool actually does</h4>
+      <p>For each client, you build a <strong>catalog</strong> — a running list of their images with URLs, descriptions, and tags. Two types of images go in:</p>
+      <ul>
+        <li><strong>Wix-hosted images</strong> that already exist on the client's site. You copy the URL from Wix and paste it here with a description so you (and Claude) can find it later.</li>
+        <li><strong>New images hosted on GitHub Pages</strong> — drop a file, get a clean URL, then commit the file to the client's GitHub repo. Use these when you're adding fresh images to a site or when you want naming control.</li>
+      </ul>
+      <p>The payoff: when you export the catalog, you get a clean reference Claude can read. No more hunting through Wix Media Manager for URLs mid-build.</p>
+
+      <h4 id="h-setup"><span class="step-num">2</span> Setting up a client</h4>
+      <ol>
+        <li>Click <code>+ New client</code> in the sidebar.</li>
+        <li>Fill in:
+          <ul>
+            <li><strong>Client name</strong> — required. Used as the workspace label.</li>
+            <li><strong>Wix site URL</strong> — optional, for reference. Included in the export so Claude knows what site this is for.</li>
+            <li><strong>GitHub user</strong> — defaults to <code>therealerikap</code>. Change only if you're hosting on a different account.</li>
+            <li><strong>GitHub repo</strong> — the repo where new images will live. One repo per client is the cleanest setup (e.g., <code>fds-assets</code>, <code>mylearningfarm-assets</code>). Required if you want to add GitHub-hosted images to this client.</li>
+            <li><strong>Notes</strong> — anything Claude should know. Brand palette, style guidelines, image conventions. This shows up in every export.</li>
+          </ul>
+        </li>
+        <li>Click <code>Save client</code>. You can edit these later by clicking <code>edit</code> next to the client name.</li>
+      </ol>
+
+      <div class="tip-box">
+        <strong>One-time GitHub setup per client:</strong> Create the repo on GitHub (public). Go to Settings → Pages → set source to <code>main</code> branch, root folder. Wait ~30 seconds. The site is now live at <code>https://therealerikap.github.io/[repo-name]/</code>. Any image file you push to that repo will be accessible at that URL.
+      </div>
+
+      <h4 id="h-wix"><span class="step-num">3</span> Adding existing Wix images to the catalog</h4>
+      <p>Use this when you need to catalog images the client already has on their Wix site.</p>
+      <ol>
+        <li>Go to the client's live Wix site or Wix editor.</li>
+        <li>Right-click the image you want to catalog → <strong>Copy image address</strong>.</li>
+        <li>In the Image Catalog, make sure you're on the <code>+ Add existing Wix image</code> tab.</li>
+        <li>Paste the URL into the <strong>Wix image URL</strong> field. A preview should appear.</li>
+        <li>Fill in:
+          <ul>
+            <li><strong>Name</strong> — something short and memorable. "Homepage hero," "About page portrait," "Services CTA background."</li>
+            <li><strong>Description</strong> — what's actually in the image. This is what Claude reads to know when to use it. Be specific: "Exterior shot of commercial metal fire door in an office building, natural lighting" beats "fire door photo."</li>
+            <li><strong>Tags</strong> — keywords for searching. Comma-separated.</li>
+            <li><strong>Used on pages</strong> — so you know where it already appears. Helps avoid using the same image twice.</li>
+            <li><strong>Alt text</strong> — for accessibility and SEO. If the Wix image has alt text, copy it here.</li>
+          </ul>
+        </li>
+        <li>Click <code>Add to catalog</code>.</li>
+      </ol>
+
+      <h4 id="h-github"><span class="step-num">4</span> Adding new images (GitHub-hosted)</h4>
+      <p>Use this when adding a brand new image to a client's site, especially when you want predictable URLs.</p>
+      <ol>
+        <li>Switch to the <code>+ Add new GitHub image</code> tab.</li>
+        <li>Drop your image file onto the dropzone (or click to browse).</li>
+        <li>The tool auto-generates a cleaned-up filename (lowercase, hyphens, no spaces). You can edit it before saving.</li>
+        <li>Fill in the same description, tags, pages, and alt text fields as before.</li>
+        <li>Click <code>Add to catalog</code>.</li>
+        <li><strong>Don't forget this step:</strong> go to the client's GitHub repo and upload the image file using the <em>exact filename</em> shown. The URL won't work until you do this.
+          <ul>
+            <li>Easiest way: on GitHub, open the repo → click <code>Add file</code> → <code>Upload files</code> → drag in → commit.</li>
+          </ul>
+        </li>
+      </ol>
+
+      <div class="warn-box">
+        <strong>Heads up:</strong> The tool doesn't upload to GitHub for you — that's intentional (avoids storing credentials). If you skip the GitHub commit step, the catalog entry will exist but the URL will return a 404.
+      </div>
+
+      <h4 id="h-export"><span class="step-num">5</span> Using the export — the whole point of the tool</h4>
+      <p>Once a client has a catalog, click <code>Export for Claude</code> in the client header.</p>
+
+      <h5>Option A: Fast & disposable</h5>
+      <ol>
+        <li>Hit <code>Copy to clipboard</code>.</li>
+        <li>Open a new Claude chat.</li>
+        <li>Paste it at the start of the chat with a message like: <em>"Here's the FDS image catalog. I'm building a new services page — use images from this list."</em></li>
+        <li>Claude now knows every available image and will reference them by URL.</li>
+      </ol>
+
+      <h5>Option B: Reusable (recommended for ongoing clients)</h5>
+      <ol>
+        <li>Hit <code>Download file</code>.</li>
+        <li>Upload <code>[client]-image-catalog.md</code> to the client's GitHub repo.</li>
+        <li>In any future Claude chat, just say: <em>"Pull the image catalog from <code>https://therealerikap.github.io/fds-assets/[client]-image-catalog.md</code>"</em></li>
+        <li>Claude fetches the live file. You only update one place — re-export and re-upload whenever you add new images.</li>
+      </ol>
+
+      <div class="tip-box">
+        <strong>Markdown vs JSON:</strong> Use Markdown by default. It's readable by both humans and Claude, and it'll render properly when you view it on GitHub. JSON is there only if you want to pipe the catalog into other automation later.
+      </div>
+
+      <h4 id="h-tips"><span class="step-num">6</span> Tips, gotchas, and habits</h4>
+      <ul>
+        <li><strong>Write descriptions for Claude, not for yourself.</strong> "Hero image" means nothing to Claude. "Wide-angle photo of a commercial metal fire door with push bar, natural light, used as hero on the homepage" means everything.</li>
+        <li><strong>Update the "used on" field.</strong> This is how you avoid putting the same hero image on three different pages.</li>
+        <li><strong>Re-export after changes.</strong> The catalog in your browser updates instantly, but if you use Option B above, you need to re-download and re-upload the markdown file to GitHub for Claude to see the changes.</li>
+        <li><strong>The catalog lives in your browser.</strong> It's stored in this browser only — so use the same computer + browser, or export as JSON periodically as a backup. If you clear your browser data, the catalog is gone (though the GitHub repo copies survive).</li>
+        <li><strong>Broken thumbnails aren't broken entries.</strong> If a Wix URL's preview fails (some are CDN-restricted), the URL is still saved correctly. Test the URL in a new browser tab to confirm.</li>
+      </ul>
+
+      <h4 id="h-handoff"><span class="step-num">7</span> Handing this off to a VA or teammate</h4>
+      <p>If someone else is going to maintain the catalog:</p>
+      <ol>
+        <li>Send them the HTML file. They save it somewhere and open it in a browser (Chrome, Edge, Firefox, Safari — any modern browser works).</li>
+        <li>Walk them through one client setup so they see how the Wix right-click-copy workflow goes.</li>
+        <li>Make sure they understand: <strong>adding to the catalog is not the same as uploading to GitHub.</strong> For new images, both steps need to happen.</li>
+        <li>Give them access to your GitHub account (or have them push to their own, and update the GitHub user field per client).</li>
+        <li>Agree on a cadence — probably re-export + re-upload the markdown whenever images change, or weekly if catalogs change often.</li>
+      </ol>
+      <p>They can reference this exact instructions panel anytime by clicking <code>How to use this tool</code> in the sidebar.</p>
+
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="helpClose">Got it</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---------- State ----------
+  const LS_KEY = 'visible_catalog_v1';
+  let state = loadState();
+  let activeClientId = state.activeClientId || (state.clients[0]?.id ?? null);
+  let addMode = 'wix'; // 'wix' or 'github'
+  let editingImageId = null;
+  let searchQuery = '';
+  let activeFilter = 'all';
+
+  function loadState() {
+    try {
+      const s = JSON.parse(localStorage.getItem(LS_KEY));
+      if (s && Array.isArray(s.clients)) return s;
+    } catch {}
+    return { clients: [], activeClientId: null };
+  }
+  function saveState() {
+    state.activeClientId = activeClientId;
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  }
+
+  // ---------- Helpers ----------
+  function $(id) { return document.getElementById(id); }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function slugify(s) {
+    return s.toLowerCase().replace(/\.[^.]+$/, '').replace(/['']/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+  }
+  function ext(name) {
+    const m = name.match(/\.([a-z0-9]+)$/i);
+    return m ? m[1].toLowerCase() : 'png';
+  }
+  function escapeHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function detectSource(url) {
+    if (!url) return 'other';
+    if (/wixstatic\.com|wix\.com|wixmp\.com|usrfiles\.com/.test(url)) return 'wix';
+    if (/github\.io|raw\.githubusercontent\.com/.test(url)) return 'github';
+    return 'other';
+  }
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+  function getClient(id) { return state.clients.find(c => c.id === id); }
+
+  // ---------- Render sidebar ----------
+  function renderSidebar() {
+    const list = $('clientList');
+    if (state.clients.length === 0) {
+      list.innerHTML = '<div style="font-size:12px; color:rgba(245,239,224,0.4); padding:12px 2px">No clients yet. Add one below.</div>';
+      return;
+    }
+    list.innerHTML = state.clients.map(c => `
+      <div class="client-item ${c.id === activeClientId ? 'active' : ''}" data-id="${c.id}">
+        <span>${escapeHtml(c.name)}</span>
+        <span class="count">${c.images?.length || 0}</span>
+      </div>
+    `).join('');
+
+    list.querySelectorAll('.client-item').forEach(el => {
+      el.addEventListener('click', () => {
+        activeClientId = el.dataset.id;
+        searchQuery = '';
+        activeFilter = 'all';
+        saveState();
+        renderSidebar();
+        renderMain();
+      });
+    });
+  }
+
+  // ---------- Render main ----------
+  function renderMain() {
+    const main = $('mainPane');
+
+    if (!activeClientId || !getClient(activeClientId)) {
+      main.innerHTML = `
+        <div class="empty-state" style="padding-top:120px">
+          <div class="big">get started</div>
+          <div style="max-width:420px; margin:0 auto">Create a client workspace in the sidebar. Each client gets its own image catalog that you can export for Claude to read in future chats.</div>
+        </div>`;
+      return;
+    }
+
+    const client = getClient(activeClientId);
+    const imgs = client.images || [];
+
+    main.innerHTML = `
+      <div class="client-header">
+        <div>
+          <h2>${escapeHtml(client.name)}<span class="edit" id="editClient">edit</span></h2>
+          <div class="client-meta">
+            ${client.wixUrl ? `<span>${escapeHtml(client.wixUrl)}</span> · ` : ''}
+            ${client.ghUser && client.ghRepo ? `<span>${escapeHtml(client.ghUser)}/${escapeHtml(client.ghRepo)}</span> · ` : ''}
+            <span>${imgs.length} image${imgs.length === 1 ? '' : 's'}</span>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn btn-secondary" id="exportBtn">Export for Claude</button>
+          <button class="btn btn-danger" id="deleteClientBtn">Delete client</button>
+        </div>
+      </div>
+
+      <div class="add-tabs">
+        <button class="add-tab ${addMode === 'wix' ? 'active' : ''}" data-mode="wix">+ Add existing Wix image</button>
+        <button class="add-tab ${addMode === 'github' ? 'active' : ''}" data-mode="github">+ Add new GitHub image</button>
+      </div>
+
+      <section class="card with-tabs" id="addCard">${renderAddForm(client)}</section>
+
+      <div class="image-list-header">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search by name, description, tag, or page..." value="${escapeHtml(searchQuery)}">
+        <div class="filter-chips">
+          <button class="chip ${activeFilter === 'all' ? 'active' : ''}" data-filter="all">All</button>
+          <button class="chip ${activeFilter === 'wix' ? 'active' : ''}" data-filter="wix">Wix</button>
+          <button class="chip ${activeFilter === 'github' ? 'active' : ''}" data-filter="github">GitHub</button>
+          <button class="chip ${activeFilter === 'other' ? 'active' : ''}" data-filter="other">Other</button>
+        </div>
+      </div>
+
+      ${renderImageList(imgs)}
+    `;
+
+    attachMainEvents();
+  }
+
+  function renderAddForm(client) {
+    if (addMode === 'wix') {
+      return `
+        <h3>Catalog an existing Wix image</h3>
+        <p class="sub">Right-click the image in Wix editor or published site → "Copy image address" → paste below.</p>
+        <div class="form-row">
+          <label>Wix image URL</label>
+          <input type="text" id="wixUrlInput" class="mono" placeholder="https://static.wixstatic.com/media/...">
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Name / label</label>
+            <input type="text" id="wixNameInput" placeholder="Hero image — homepage">
+          </div>
+          <div class="form-row">
+            <label>Tags (comma-separated)</label>
+            <input type="text" id="wixTagsInput" placeholder="hero, services">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Description (what's in it, what it's for)</label>
+          <textarea id="wixDescInput" rows="2" placeholder="Exterior shot of commercial fire door, used as homepage hero"></textarea>
+        </div>
+        <div class="form-grid">
+          <div class="form-row">
+            <label>Used on pages</label>
+            <input type="text" id="wixPagesInput" placeholder="homepage, services">
+          </div>
+          <div class="form-row">
+            <label>Alt text</label>
+            <input type="text" id="wixAltInput" placeholder="Commercial fire door exterior">
+          </div>
+        </div>
+        <div class="add-actions">
+          <span class="add-hint">Tip: paste the URL first, the preview will appear below.</span>
+          <button class="btn btn-primary" id="wixAddBtn">Add to catalog</button>
+        </div>
+        <div id="wixPreview" style="margin-top:14px; display:none">
+          <img id="wixPreviewImg" style="max-width:200px; max-height:120px; border-radius:4px; border:1px solid var(--line)">
+        </div>
+      `;
+    } else {
+      const hasRepo = client.ghUser && client.ghRepo;
+      return `
+        <h3>Add a new image (host on GitHub)</h3>
+        <p class="sub">${hasRepo
+          ? `Drop a file below. You'll save it to <code style="font-family:JetBrains Mono,monospace; background:rgba(13,27,42,0.06); padding:1px 5px; border-radius:3px">${escapeHtml(client.ghUser)}/${escapeHtml(client.ghRepo)}</code> and catalog the URL here.`
+          : `<strong style="color:var(--magenta)">⚠ This client has no GitHub repo configured.</strong> Click "edit" next to the client name above to add one.`}</p>
+
+        ${hasRepo ? `
+        <label class="dropzone" id="ghDropzone">
+          <input type="file" id="ghFileInput" accept="image/*">
+          <div class="dropzone-label">Drop an image here</div>
+          <div class="dropzone-hint">or click to browse</div>
+        </label>
+
+        <div id="ghOutput" style="display:none">
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Filename (cleaned up)</label>
+              <input type="text" id="ghFilenameInput" class="mono">
+            </div>
+            <div class="form-row">
+              <label>Generated URL</label>
+              <input type="text" id="ghUrlPreview" class="mono" readonly>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Name / label</label>
+              <input type="text" id="ghNameInput" placeholder="Blog header — tips post">
+            </div>
+            <div class="form-row">
+              <label>Tags (comma-separated)</label>
+              <input type="text" id="ghTagsInput">
+            </div>
+          </div>
+          <div class="form-row">
+            <label>Description</label>
+            <textarea id="ghDescInput" rows="2"></textarea>
+          </div>
+          <div class="form-grid">
+            <div class="form-row">
+              <label>Used on pages</label>
+              <input type="text" id="ghPagesInput">
+            </div>
+            <div class="form-row">
+              <label>Alt text</label>
+              <input type="text" id="ghAltInput">
+            </div>
+          </div>
+          <div class="add-actions">
+            <span class="add-hint">Commit the file to GitHub under this exact filename, then click add.</span>
+            <button class="btn btn-primary" id="ghAddBtn">Add to catalog</button>
+          </div>
+        </div>
+        ` : ''}
+      `;
+    }
+  }
+
+  function renderImageList(imgs) {
+    const q = searchQuery.toLowerCase();
+    const filtered = imgs.filter(img => {
+      if (activeFilter !== 'all' && img.source !== activeFilter) return false;
+      if (!q) return true;
+      const hay = [img.name, img.description, img.url, img.tags, img.pages, img.alt]
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+
+    if (imgs.length === 0) {
+      return `<div class="empty-state">
+        <div class="big">catalog is empty</div>
+        <div>Add your first image using the form above. Wix-hosted or new ones — both work.</div>
+      </div>`;
+    }
+    if (filtered.length === 0) {
+      return `<div class="empty-state">
+        <div class="big">no matches</div>
+        <div>Try a different search or clear the filter.</div>
+      </div>`;
+    }
+
+    return `<div class="image-grid">${filtered.map(img => `
+      <div class="image-card">
+        <div class="thumb">
+          <img src="${escapeHtml(img.url)}" alt="" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'broken\\'>broken link</div><div class=\\'source-badge ${img.source}\\'>${img.source}</div>'">
+          <div class="source-badge ${img.source}">${img.source}</div>
+        </div>
+        <div class="body">
+          <div class="name">${escapeHtml(img.name || '(unnamed)')}</div>
+          ${img.description ? `<div class="desc">${escapeHtml(img.description)}</div>` : ''}
+          <div class="tags">
+            ${(img.tags || '').split(',').filter(Boolean).map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join('')}
+            ${(img.pages || '').split(',').filter(Boolean).map(p => `<span class="tag used">on: ${escapeHtml(p.trim())}</span>`).join('')}
+          </div>
+        </div>
+        <div class="actions">
+          <button data-action="copy-url" data-id="${img.id}">Copy URL</button>
+          <button data-action="copy-tag" data-id="${img.id}">Copy &lt;img&gt;</button>
+          <button data-action="edit" data-id="${img.id}">Edit</button>
+        </div>
+      </div>
+    `).join('')}</div>`;
+  }
+
+  // ---------- Main pane events ----------
+  function attachMainEvents() {
+    // Add mode tabs
+    document.querySelectorAll('.add-tab').forEach(t => t.addEventListener('click', () => {
+      addMode = t.dataset.mode;
+      const card = $('addCard');
+      const client = getClient(activeClientId);
+      card.innerHTML = renderAddForm(client);
+      document.querySelectorAll('.add-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      attachAddFormEvents();
+    }));
+
+    // Edit client
+    $('editClient')?.addEventListener('click', () => openClientModal(activeClientId));
+
+    // Export
+    $('exportBtn')?.addEventListener('click', openExportModal);
+
+    // Delete client
+    $('deleteClientBtn')?.addEventListener('click', () => {
+      const c = getClient(activeClientId);
+      if (confirm(`Delete "${c.name}" and all ${c.images?.length || 0} cataloged images? This can't be undone.`)) {
+        state.clients = state.clients.filter(x => x.id !== activeClientId);
+        activeClientId = state.clients[0]?.id ?? null;
+        saveState();
+        renderSidebar();
+        renderMain();
+        toast('Client deleted.');
+      }
+    });
+
+    // Search & filter
+    $('searchInput')?.addEventListener('input', e => {
+      searchQuery = e.target.value;
+      const client = getClient(activeClientId);
+      const listWrap = document.querySelector('.image-grid')?.parentElement || document.querySelector('.empty-state')?.parentElement;
+      // Re-render just the list portion
+      const lists = document.querySelectorAll('.image-grid, .empty-state');
+      lists.forEach(l => l.remove());
+      const insertAfter = $('searchInput').closest('.image-list-header');
+      insertAfter.insertAdjacentHTML('afterend', renderImageList(client.images || []));
+      attachCardEvents();
+    });
+
+    document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
+      activeFilter = c.dataset.filter;
+      document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      const lists = document.querySelectorAll('.image-grid, .empty-state');
+      lists.forEach(l => l.remove());
+      const insertAfter = $('searchInput').closest('.image-list-header');
+      insertAfter.insertAdjacentHTML('afterend', renderImageList(getClient(activeClientId).images || []));
+      attachCardEvents();
+    }));
+
+    attachAddFormEvents();
+    attachCardEvents();
+  }
+
+  function attachAddFormEvents() {
+    const client = getClient(activeClientId);
+
+    if (addMode === 'wix') {
+      const urlInput = $('wixUrlInput');
+      const preview = $('wixPreview');
+      const previewImg = $('wixPreviewImg');
+
+      urlInput?.addEventListener('input', () => {
+        const url = urlInput.value.trim();
+        if (url.match(/^https?:\/\//)) {
+          previewImg.src = url;
+          preview.style.display = 'block';
+          previewImg.onerror = () => { preview.style.display = 'none'; };
+        } else {
+          preview.style.display = 'none';
+        }
+      });
+
+      $('wixAddBtn')?.addEventListener('click', () => {
+        const url = $('wixUrlInput').value.trim();
+        if (!url) { toast('Paste a URL first.'); return; }
+        const img = {
+          id: uid(),
+          url,
+          source: detectSource(url),
+          name: $('wixNameInput').value.trim() || '(unnamed)',
+          description: $('wixDescInput').value.trim(),
+          tags: $('wixTagsInput').value.trim(),
+          pages: $('wixPagesInput').value.trim(),
+          alt: $('wixAltInput').value.trim(),
+          added: new Date().toISOString()
+        };
+        client.images = client.images || [];
+        client.images.unshift(img);
+        saveState();
+        renderSidebar();
+        renderMain();
+        toast('Image added to catalog.');
+      });
+    }
+
+    if (addMode === 'github') {
+      const dz = $('ghDropzone');
+      const fi = $('ghFileInput');
+      if (!dz) return;
+
+      ['dragenter', 'dragover'].forEach(e => dz.addEventListener(e, ev => {
+        ev.preventDefault(); dz.classList.add('dragover');
+      }));
+      ['dragleave', 'drop'].forEach(e => dz.addEventListener(e, ev => {
+        ev.preventDefault(); dz.classList.remove('dragover');
+      }));
+      dz.addEventListener('drop', ev => {
+        const f = ev.dataTransfer.files[0];
+        if (f) handleGhFile(f);
+      });
+      fi.addEventListener('change', e => {
+        if (e.target.files[0]) handleGhFile(e.target.files[0]);
+      });
+
+      function handleGhFile(file) {
+        if (!file.type.startsWith('image/')) { toast('Not an image.'); return; }
+        const filename = `${slugify(file.name) || 'image'}.${ext(file.name)}`;
+        $('ghFilenameInput').value = filename;
+        $('ghOutput').style.display = 'block';
+        updateGhUrl();
+
+        const reader = new FileReader();
+        reader.onload = e => {
+          // Stash preview for later (won't persist past session)
+          $('ghOutput').dataset.preview = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function updateGhUrl() {
+        const filename = $('ghFilenameInput').value.trim();
+        const url = `https://${client.ghUser}.github.io/${client.ghRepo}/${filename}`;
+        $('ghUrlPreview').value = url;
+      }
+
+      $('ghFilenameInput')?.addEventListener('input', updateGhUrl);
+
+      $('ghAddBtn')?.addEventListener('click', () => {
+        const url = $('ghUrlPreview').value.trim();
+        const filename = $('ghFilenameInput').value.trim();
+        if (!url || !filename) { toast('Drop a file first.'); return; }
+        const img = {
+          id: uid(),
+          url,
+          source: 'github',
+          filename,
+          name: $('ghNameInput').value.trim() || filename,
+          description: $('ghDescInput').value.trim(),
+          tags: $('ghTagsInput').value.trim(),
+          pages: $('ghPagesInput').value.trim(),
+          alt: $('ghAltInput').value.trim(),
+          added: new Date().toISOString()
+        };
+        client.images = client.images || [];
+        client.images.unshift(img);
+        saveState();
+        renderSidebar();
+        renderMain();
+        toast(`Added. Don't forget to commit "${filename}" to the repo.`);
+      });
+    }
+  }
+
+  function attachCardEvents() {
+    document.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const client = getClient(activeClientId);
+        const img = client.images.find(x => x.id === btn.dataset.id);
+        if (!img) return;
+
+        if (btn.dataset.action === 'copy-url') {
+          navigator.clipboard.writeText(img.url);
+          toast('URL copied.');
+        } else if (btn.dataset.action === 'copy-tag') {
+          navigator.clipboard.writeText(`<img src="${img.url}" alt="${img.alt || ''}" />`);
+          toast('<img> tag copied.');
+        } else if (btn.dataset.action === 'edit') {
+          openImageModal(img.id);
+        }
+      });
+    });
+  }
+
+  // ---------- Client modal ----------
+  function openClientModal(clientId = null) {
+    editingImageId = null;
+    const c = clientId ? getClient(clientId) : null;
+    $('clientModalTitle').textContent = c ? `Edit: ${c.name}` : 'New client';
+    $('modalClientName').value = c?.name || '';
+    $('modalWixUrl').value = c?.wixUrl || '';
+    $('modalGhUser').value = c?.ghUser || 'therealerikap';
+    $('modalGhRepo').value = c?.ghRepo || '';
+    $('modalNotes').value = c?.notes || '';
+    $('clientModal').classList.add('show');
+    $('modalClientName').focus();
+    $('clientModal').dataset.editingId = clientId || '';
+  }
+  function closeClientModal() { $('clientModal').classList.remove('show'); }
+
+  $('newClientBtn').addEventListener('click', () => openClientModal());
+  $('modalCancel').addEventListener('click', closeClientModal);
+  $('modalSave').addEventListener('click', () => {
+    const name = $('modalClientName').value.trim();
+    if (!name) { toast('Client needs a name.'); return; }
+    const editingId = $('clientModal').dataset.editingId;
+    const data = {
+      name,
+      wixUrl: $('modalWixUrl').value.trim(),
+      ghUser: $('modalGhUser').value.trim(),
+      ghRepo: $('modalGhRepo').value.trim(),
+      notes: $('modalNotes').value.trim()
+    };
+
+    if (editingId) {
+      const c = getClient(editingId);
+      Object.assign(c, data);
+    } else {
+      const newClient = { id: uid(), ...data, images: [], created: new Date().toISOString() };
+      state.clients.push(newClient);
+      activeClientId = newClient.id;
+    }
+    saveState();
+    renderSidebar();
+    renderMain();
+    closeClientModal();
+    toast(editingId ? 'Client updated.' : 'Client created.');
+  });
+
+  // ---------- Image modal ----------
+  function openImageModal(id) {
+    const client = getClient(activeClientId);
+    const img = client.images.find(x => x.id === id);
+    if (!img) return;
+    editingImageId = id;
+    $('imgName').value = img.name || '';
+    $('imgUrl').value = img.url || '';
+    $('imgDesc').value = img.description || '';
+    $('imgTags').value = img.tags || '';
+    $('imgPages').value = img.pages || '';
+    $('imgAlt').value = img.alt || '';
+    $('imageModal').classList.add('show');
+  }
+  $('imgCancel').addEventListener('click', () => $('imageModal').classList.remove('show'));
+  $('imgSave').addEventListener('click', () => {
+    const client = getClient(activeClientId);
+    const img = client.images.find(x => x.id === editingImageId);
+    if (!img) return;
+    img.name = $('imgName').value.trim();
+    img.url = $('imgUrl').value.trim();
+    img.source = detectSource(img.url);
+    img.description = $('imgDesc').value.trim();
+    img.tags = $('imgTags').value.trim();
+    img.pages = $('imgPages').value.trim();
+    img.alt = $('imgAlt').value.trim();
+    saveState();
+    renderMain();
+    $('imageModal').classList.remove('show');
+    toast('Image updated.');
+  });
+  $('imgDelete').addEventListener('click', () => {
+    if (!confirm('Delete this image from the catalog?')) return;
+    const client = getClient(activeClientId);
+    client.images = client.images.filter(x => x.id !== editingImageId);
+    saveState();
+    renderSidebar();
+    renderMain();
+    $('imageModal').classList.remove('show');
+    toast('Image deleted.');
+  });
+
+  // ---------- Export ----------
+  let exportFormat = 'md';
+
+  function openExportModal() {
+    $('exportModal').classList.add('show');
+    exportFormat = 'md';
+    document.querySelectorAll('.export-tab').forEach(t => t.classList.toggle('active', t.dataset.format === 'md'));
+    renderExport();
+  }
+
+  document.querySelectorAll('.export-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      exportFormat = t.dataset.format;
+      document.querySelectorAll('.export-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      renderExport();
+    });
+  });
+
+  $('exportClose').addEventListener('click', () => $('exportModal').classList.remove('show'));
+
+  $('exportCopy').addEventListener('click', () => {
+    navigator.clipboard.writeText($('exportOutput').textContent);
+    toast('Copied. Paste into any Claude chat.');
+  });
+
+  $('exportDownload').addEventListener('click', () => {
+    const client = getClient(activeClientId);
+    const slug = slugify(client.name) || 'catalog';
+    const ext_ = exportFormat === 'md' ? 'md' : 'json';
+    const blob = new Blob([$('exportOutput').textContent], {type: exportFormat === 'md' ? 'text/markdown' : 'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${slug}-image-catalog.${ext_}`;
+    a.click();
+    toast(`Downloaded. Commit this to the client's repo so you can link to it.`);
+  });
+
+  function renderExport() {
+    const client = getClient(activeClientId);
+    const out = $('exportOutput');
+    if (exportFormat === 'json') {
+      out.textContent = JSON.stringify({
+        client: client.name,
+        wixUrl: client.wixUrl || null,
+        githubRepo: client.ghUser && client.ghRepo ? `${client.ghUser}/${client.ghRepo}` : null,
+        notes: client.notes || null,
+        generated: new Date().toISOString(),
+        images: (client.images || []).map(img => ({
+          name: img.name,
+          url: img.url,
+          source: img.source,
+          description: img.description || null,
+          alt: img.alt || null,
+          tags: img.tags ? img.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
+          usedOn: img.pages ? img.pages.split(',').map(s => s.trim()).filter(Boolean) : []
+        }))
+      }, null, 2);
+    } else {
+      out.textContent = buildMarkdown(client);
+    }
+  }
+
+  function buildMarkdown(client) {
+    const imgs = client.images || [];
+    const lines = [];
+    lines.push(`# ${client.name} — Image Catalog`);
+    lines.push('');
+    lines.push(`> This is a reference catalog of every image available for ${client.name}'s web presence. When building new pages or embeds, use URLs from this list instead of placeholders.`);
+    lines.push('');
+
+    const meta = [];
+    if (client.wixUrl) meta.push(`**Wix site:** ${client.wixUrl}`);
+    if (client.ghUser && client.ghRepo) meta.push(`**GitHub repo (new images):** \`${client.ghUser}/${client.ghRepo}\` → \`https://${client.ghUser}.github.io/${client.ghRepo}/\``);
+    if (meta.length) { lines.push(...meta, ''); }
+    if (client.notes) { lines.push(`**Notes:** ${client.notes}`, ''); }
+
+    lines.push(`**Total images cataloged:** ${imgs.length}`);
+    lines.push(`**Last updated:** ${new Date().toISOString().slice(0, 10)}`);
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+
+    // Group by source
+    const bySource = { wix: [], github: [], other: [] };
+    imgs.forEach(img => bySource[img.source || 'other'].push(img));
+
+    const sourceLabels = {
+      wix: 'Wix-hosted (existing on client\'s Wix site)',
+      github: 'GitHub-hosted (added via Visible)',
+      other: 'Other sources'
+    };
+
+    ['wix', 'github', 'other'].forEach(src => {
+      if (bySource[src].length === 0) return;
+      lines.push(`## ${sourceLabels[src]}`);
+      lines.push('');
+      bySource[src].forEach(img => {
+        lines.push(`### ${img.name || '(unnamed)'}`);
+        lines.push(`- **URL:** \`${img.url}\``);
+        if (img.description) lines.push(`- **Description:** ${img.description}`);
+        if (img.alt) lines.push(`- **Alt text:** ${img.alt}`);
+        if (img.tags) lines.push(`- **Tags:** ${img.tags}`);
+        if (img.pages) lines.push(`- **Used on:** ${img.pages}`);
+        lines.push('');
+      });
+    });
+
+    lines.push('---');
+    lines.push('');
+    lines.push('*Generated by Visible Image Catalog.*');
+
+    return lines.join('\n');
+  }
+
+  // ---------- Help modal ----------
+  $('helpBtn').addEventListener('click', () => {
+    $('helpModal').classList.add('show');
+    // Scroll to top when opening
+    $('helpModal').querySelector('.modal').scrollTop = 0;
+  });
+  $('helpClose').addEventListener('click', () => $('helpModal').classList.remove('show'));
+
+  // Smooth scroll for TOC links inside help
+  document.querySelectorAll('.help-toc a').forEach(link => {
+    link.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.getElementById(link.getAttribute('href').slice(1));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // ---------- Close modals on backdrop click ----------
+  document.querySelectorAll('.modal-backdrop').forEach(m => {
+    m.addEventListener('click', e => {
+      if (e.target === m) m.classList.remove('show');
+    });
+  });
+
+  // ---------- Keyboard ----------
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
+    }
+  });
+
+  // ---------- Init ----------
+  renderSidebar();
+  renderMain();
+</script>
+
+</body>
+</html>
