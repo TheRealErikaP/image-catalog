@@ -1017,6 +1017,63 @@
   </div>
 </div>
 
+<!-- Bulk upload from computer modal -->
+<div class="modal-backdrop" id="bulkUploadModal">
+  <div class="modal" style="max-width:920px;">
+    <h3>Bulk upload images from computer</h3>
+    <p class="sub">Drop multiple files (or a whole folder). Each one gets uploaded to the client's GitHub repo and cataloged. Optionally, Claude Vision describes each as it goes.</p>
+
+    <div id="bulkUploadIntro">
+      <div style="display:flex; gap:16px; align-items:center; padding:14px 18px; background:rgba(0,180,177,0.08); border-left:3px solid var(--teal); border-radius:4px; margin-bottom:16px; font-size:13px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="bulkUploadUseAI" checked style="width:16px; height:16px; cursor:pointer;">
+          <span><strong>✨ Auto-describe with AI</strong></span>
+        </label>
+        <span id="bulkUploadAIHint" style="color:rgba(13,27,42,0.65);">Each image costs ~1.5¢ to describe. Uncheck to skip and save cost.</span>
+      </div>
+
+      <div id="bulkUploadDropzone" style="border:2px dashed rgba(13,27,42,0.2); border-radius:8px; padding:40px 20px; text-align:center; cursor:pointer; transition:all 0.15s; background:var(--paper);">
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:0.04em; margin-bottom:6px; color:var(--navy);">
+          DROP IMAGES OR FOLDER HERE
+        </div>
+        <div style="font-size:13px; color:rgba(13,27,42,0.6); margin-bottom:12px;">or click to browse — you can select multiple files at once</div>
+        <div style="display:flex; gap:8px; justify-content:center;">
+          <button type="button" class="btn btn-secondary" id="bulkUploadFilesBtn" style="font-size:12px;">Choose files</button>
+          <button type="button" class="btn btn-secondary" id="bulkUploadFolderBtn" style="font-size:12px;">Choose folder</button>
+        </div>
+        <input type="file" id="bulkUploadFileInput" accept="image/*" multiple style="display:none;">
+        <input type="file" id="bulkUploadFolderInput" webkitdirectory multiple style="display:none;">
+      </div>
+
+      <div id="bulkUploadQueueWrap" style="display:none; margin-top:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <strong id="bulkUploadCount"></strong>
+          <span id="bulkUploadEstimate" style="font-size:12px; color:rgba(13,27,42,0.65);"></span>
+        </div>
+        <div id="bulkUploadList" style="max-height:340px; overflow-y:auto; border:1px solid var(--line); border-radius:4px; background:white;"></div>
+      </div>
+    </div>
+
+    <div id="bulkUploadProgress" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px;">
+        <span id="bulkUploadProgressLabel">Preparing...</span>
+        <span id="bulkUploadProgressCount" style="font-family:'JetBrains Mono',monospace;"></span>
+      </div>
+      <div style="height:8px; background:rgba(13,27,42,0.08); border-radius:4px; overflow:hidden;">
+        <div id="bulkUploadProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg, var(--teal), var(--magenta)); transition:width 0.3s;"></div>
+      </div>
+      <div id="bulkUploadCurrentItem" style="margin-top:10px; font-size:12px; color:rgba(13,27,42,0.6); font-family:'JetBrains Mono',monospace; min-height:18px;"></div>
+    </div>
+
+    <div id="bulkUploadResult" style="display:none; margin-top:16px;"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="bulkUploadCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="bulkUploadStartBtn" disabled>⚡ Upload all</button>
+    </div>
+  </div>
+</div>
+
 <!-- Bulk AI fix modal -->
 <div class="modal-backdrop" id="bulkFixModal">
   <div class="modal" style="max-width:640px;">
@@ -1325,6 +1382,7 @@
           <button class="add-tab ${addMode === 'wix' ? 'active' : ''}" data-mode="wix">+ Add existing Wix image</button>
           <button class="add-tab ${addMode === 'github' ? 'active' : ''}" data-mode="github">+ Add new GitHub image</button>
           <button class="add-tab" id="openBulkTabBtn" data-mode="bulk">+ Bulk import links</button>
+          <button class="add-tab" id="openBulkUploadTabBtn" data-mode="bulk-upload">+ Bulk upload from computer</button>
         </div>
 
         <section class="card with-tabs" id="addCard">${renderAddForm(client)}</section>
@@ -3643,6 +3701,349 @@
     // Temporarily set for preview, doesn't save until Save is clicked
     const temp = { ...settings, githubPatExpiry: document.getElementById('settingsGithubPatExpiry').value };
     renderPatExpiryStatusInto(temp);
+  });
+
+  // ============================================================
+  // BULK UPLOAD FROM COMPUTER — multi-file → optional AI describe → push → catalog
+  // ============================================================
+
+  let bulkUploadQueue = []; // { file, base64, mediaType, preview, filename, name, description, alt, tags, skip, status }
+  let bulkUploadCancelled = false;
+
+  function openBulkUploadModal() {
+    if (!activeClientId) { toast('Pick or create a client first.'); return; }
+    const client = getClient(activeClientId);
+    if (!client.ghUser || !client.ghRepo) {
+      toast('This client needs a GitHub user and repo set (click "edit" next to the client name).');
+      return;
+    }
+    if (!settings.githubPat) {
+      toast('Add your GitHub PAT in Settings first.');
+      return;
+    }
+
+    bulkUploadQueue = [];
+    bulkUploadCancelled = false;
+    document.getElementById('bulkUploadFileInput').value = '';
+    document.getElementById('bulkUploadFolderInput').value = '';
+    document.getElementById('bulkUploadQueueWrap').style.display = 'none';
+    document.getElementById('bulkUploadList').innerHTML = '';
+    document.getElementById('bulkUploadProgress').style.display = 'none';
+    document.getElementById('bulkUploadResult').style.display = 'none';
+    document.getElementById('bulkUploadIntro').style.display = 'block';
+    document.getElementById('bulkUploadStartBtn').disabled = true;
+    document.getElementById('bulkUploadStartBtn').textContent = '⚡ Upload all';
+    document.getElementById('bulkUploadCancelBtn').textContent = 'Cancel';
+    document.getElementById('bulkUploadCancelBtn').style.display = '';
+    updateBulkUploadEstimate();
+    document.getElementById('bulkUploadModal').classList.add('show');
+  }
+
+  // Intercept clicks on the tab (tab itself doesn't change UI — it opens a modal)
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'openBulkUploadTabBtn') {
+      e.preventDefault();
+      openBulkUploadModal();
+    }
+  });
+
+  // File picker buttons
+  document.getElementById('bulkUploadFilesBtn')?.addEventListener('click', () => {
+    document.getElementById('bulkUploadFileInput').click();
+  });
+  document.getElementById('bulkUploadFolderBtn')?.addEventListener('click', () => {
+    document.getElementById('bulkUploadFolderInput').click();
+  });
+  document.getElementById('bulkUploadFileInput')?.addEventListener('change', e => {
+    handleBulkUploadFiles(Array.from(e.target.files));
+  });
+  document.getElementById('bulkUploadFolderInput')?.addEventListener('change', e => {
+    handleBulkUploadFiles(Array.from(e.target.files));
+  });
+
+  // Drag & drop
+  const bulkDz = document.getElementById('bulkUploadDropzone');
+  if (bulkDz) {
+    ['dragenter', 'dragover'].forEach(ev => bulkDz.addEventListener(ev, e => {
+      e.preventDefault();
+      bulkDz.style.borderColor = 'var(--teal)';
+      bulkDz.style.background = 'rgba(0,180,177,0.04)';
+    }));
+    ['dragleave', 'drop'].forEach(ev => bulkDz.addEventListener(ev, e => {
+      e.preventDefault();
+      bulkDz.style.borderColor = 'rgba(13,27,42,0.2)';
+      bulkDz.style.background = 'var(--paper)';
+    }));
+    bulkDz.addEventListener('drop', e => {
+      handleBulkUploadFiles(Array.from(e.dataTransfer.files));
+    });
+  }
+
+  function handleBulkUploadFiles(files) {
+    const images = files.filter(f => f.type.startsWith('image/'));
+    const skipped = files.length - images.length;
+    if (images.length === 0) {
+      toast(skipped > 0 ? `Skipped ${skipped} non-image file${skipped === 1 ? '' : 's'}.` : 'No images selected.');
+      return;
+    }
+
+    // Read each file to base64 + generate preview
+    let processed = 0;
+    images.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const dataUrl = e.target.result;
+        const mediaType = dataUrl.substring(5, dataUrl.indexOf(';'));
+        const base64 = dataUrl.split(',')[1];
+        const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+        const prettyName = baseName.replace(/\b\w/g, c => c.toUpperCase());
+        const cleanFilename = `${slugify(file.name) || 'image-' + idx}.${ext(file.name)}`;
+
+        bulkUploadQueue.push({
+          file, base64, mediaType,
+          preview: dataUrl,
+          filename: cleanFilename,
+          name: prettyName,
+          description: '',
+          alt: '',
+          tags: '',
+          skip: false,
+          status: 'pending'
+        });
+        processed++;
+        if (processed === images.length) {
+          renderBulkUploadQueue();
+          document.getElementById('bulkUploadQueueWrap').style.display = 'block';
+          document.getElementById('bulkUploadStartBtn').disabled = false;
+          if (skipped > 0) toast(`${images.length} images queued · ${skipped} non-image file${skipped === 1 ? '' : 's'} skipped.`);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  document.getElementById('bulkUploadUseAI')?.addEventListener('change', updateBulkUploadEstimate);
+
+  function updateBulkUploadEstimate() {
+    const useAI = document.getElementById('bulkUploadUseAI')?.checked;
+    const active = bulkUploadQueue.filter(q => !q.skip).length;
+    const costLine = useAI && active > 0
+      ? `~$${(active * 0.015).toFixed(2)} · ~${Math.max(1, Math.ceil(active * 4 / 60))} min`
+      : (active > 0 ? `No API cost · ~${Math.max(1, Math.ceil(active * 2 / 60))} min` : '');
+    const el = document.getElementById('bulkUploadEstimate');
+    if (el) el.textContent = costLine;
+  }
+
+  function renderBulkUploadQueue() {
+    const listEl = document.getElementById('bulkUploadList');
+    const countEl = document.getElementById('bulkUploadCount');
+    const active = bulkUploadQueue.filter(q => !q.skip).length;
+    countEl.textContent = `${active} of ${bulkUploadQueue.length} queued`;
+
+    listEl.innerHTML = bulkUploadQueue.map((item, i) => `
+      <div style="padding:10px 14px; border-bottom:1px solid var(--line); display:grid; grid-template-columns:56px 1fr auto; gap:12px; align-items:center; ${item.skip ? 'opacity:0.4;' : ''}">
+        <img src="${item.preview}" style="width:56px; height:56px; object-fit:cover; border-radius:4px;">
+        <div style="min-width:0;">
+          <input data-idx="${i}" data-field="name" class="bulk-upload-field" value="${escapeHtml(item.name)}" style="font-size:13px; font-weight:500; padding:4px 8px; border:1px solid var(--line); border-radius:3px; width:100%; margin-bottom:4px; font-family:inherit;">
+          <div style="font-size:10px; color:rgba(13,27,42,0.55); font-family:'JetBrains Mono',monospace;">
+            ${escapeHtml(item.filename)} · ${(item.file.size / 1024).toFixed(0)} KB
+          </div>
+        </div>
+        <button class="btn btn-secondary bulk-upload-skip" data-idx="${i}" style="padding:4px 10px; font-size:11px;">${item.skip ? 'Include' : 'Skip'}</button>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('.bulk-upload-field').forEach(el => {
+      el.addEventListener('input', () => {
+        const idx = parseInt(el.dataset.idx);
+        bulkUploadQueue[idx][el.dataset.field] = el.value;
+      });
+    });
+    listEl.querySelectorAll('.bulk-upload-skip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx);
+        bulkUploadQueue[idx].skip = !bulkUploadQueue[idx].skip;
+        renderBulkUploadQueue();
+        updateBulkUploadEstimate();
+      });
+    });
+
+    updateBulkUploadEstimate();
+  }
+
+  document.getElementById('bulkUploadCancelBtn')?.addEventListener('click', () => {
+    bulkUploadCancelled = true;
+    document.getElementById('bulkUploadModal').classList.remove('show');
+  });
+
+  document.getElementById('bulkUploadStartBtn')?.addEventListener('click', async () => {
+    const startBtn = document.getElementById('bulkUploadStartBtn');
+
+    // Mid-run cancel
+    if (startBtn.dataset.mode === 'cancel') {
+      bulkUploadCancelled = true;
+      startBtn.disabled = true;
+      startBtn.textContent = 'Stopping...';
+      return;
+    }
+
+    // Post-run close
+    if (startBtn.dataset.mode === 'close') {
+      document.getElementById('bulkUploadModal').classList.remove('show');
+      renderSidebar();
+      renderMain();
+      return;
+    }
+
+    const client = getClient(activeClientId);
+    const useAI = document.getElementById('bulkUploadUseAI').checked;
+    const active = bulkUploadQueue.filter(q => !q.skip);
+    if (active.length === 0) { toast('Nothing queued.'); return; }
+
+    // Confirm if AI is on
+    if (useAI && !settings.anthropicKey) {
+      if (!confirm('AI is checked but you have no Anthropic API key set. Proceed without AI descriptions? (Names will come from filenames.)')) return;
+    }
+
+    // Switch UI to progress mode
+    document.getElementById('bulkUploadIntro').style.display = 'none';
+    document.getElementById('bulkUploadProgress').style.display = 'block';
+    startBtn.dataset.mode = 'cancel';
+    startBtn.textContent = '⏹ Stop';
+    document.getElementById('bulkUploadCancelBtn').style.display = 'none';
+    bulkUploadCancelled = false;
+
+    const results = { success: 0, failed: 0, skipped: bulkUploadQueue.length - active.length, cancelled: 0 };
+    client.images = client.images || [];
+    const hasKey = useAI && settings.anthropicKey;
+
+    for (let i = 0; i < bulkUploadQueue.length; i++) {
+      if (bulkUploadCancelled) {
+        results.cancelled = active.length - results.success - results.failed;
+        break;
+      }
+      const item = bulkUploadQueue[i];
+      if (item.skip) continue;
+
+      const progressBar = document.getElementById('bulkUploadProgressBar');
+      const progressCount = document.getElementById('bulkUploadProgressCount');
+      const progressLabel = document.getElementById('bulkUploadProgressLabel');
+      const currentItem = document.getElementById('bulkUploadCurrentItem');
+
+      const processedCount = results.success + results.failed + 1;
+      progressBar.style.width = `${((processedCount - 1) / active.length) * 100}%`;
+      progressCount.textContent = `${processedCount} / ${active.length}`;
+      currentItem.textContent = item.name.slice(0, 60);
+
+      try {
+        // Step 1: AI describe (if enabled)
+        if (hasKey) {
+          progressLabel.textContent = `Describing ${processedCount}/${active.length}...`;
+          try {
+            const aiResult = await describeWithClaude(item.base64, item.mediaType);
+            item.description = aiResult.description || '';
+            item.alt = aiResult.alt || '';
+            item.tags = aiResult.tags || '';
+            // Override name from AI output (first 6 words)
+            const source = aiResult.alt || aiResult.description || '';
+            if (source) {
+              let n = source.split(/[.!?,]/)[0].split(' ').slice(0, 6).join(' ').trim();
+              n = n.replace(/^\w/, c => c.toUpperCase());
+              if (n) item.name = n;
+            }
+            // Regenerate filename from the AI name for a cleaner slug
+            const cleanSlug = item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+            if (cleanSlug) {
+              const extMatch = item.filename.match(/\.[^.]+$/);
+              item.filename = cleanSlug + (extMatch ? extMatch[0] : '.jpg');
+            }
+          } catch (err) {
+            console.warn('AI describe failed for', item.file.name, err);
+            // Fall through — use existing name + empty description
+          }
+        }
+
+        // Step 2: Push to GitHub
+        progressLabel.textContent = `Uploading ${processedCount}/${active.length}...`;
+
+        let existingSha = null;
+        try {
+          const checkRes = await fetch(
+            `https://api.github.com/repos/${client.ghUser}/${client.ghRepo}/contents/${encodeURIComponent(item.filename)}`,
+            { headers: { 'Authorization': `token ${settings.githubPat}`, 'Accept': 'application/vnd.github.v3+json' } }
+          );
+          if (checkRes.ok) {
+            existingSha = (await checkRes.json()).sha;
+          }
+        } catch {}
+
+        const uploadBody = {
+          message: `Bulk upload: ${item.filename}${settings.displayName ? ` (by ${settings.displayName})` : ''}`,
+          content: item.base64
+        };
+        if (existingSha) uploadBody.sha = existingSha;
+
+        const uploadRes = await fetch(
+          `https://api.github.com/repos/${client.ghUser}/${client.ghRepo}/contents/${encodeURIComponent(item.filename)}`,
+          { method: 'PUT', headers: { 'Authorization': `token ${settings.githubPat}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' }, body: JSON.stringify(uploadBody) }
+        );
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({}));
+          throw new Error(err.message || `GitHub ${uploadRes.status}`);
+        }
+
+        // Step 3: Catalog
+        const url = `https://${client.ghUser}.github.io/${client.ghRepo}/${item.filename}`;
+        const img = {
+          id: uid(),
+          url,
+          source: 'github',
+          filename: item.filename,
+          name: item.name,
+          description: item.description,
+          tags: item.tags,
+          pages: '',
+          alt: item.alt,
+          added: new Date().toISOString()
+        };
+        if (settings.displayName) img.addedBy = settings.displayName;
+        client.images.unshift(img);
+        saveState();
+
+        results.success++;
+        item.status = 'done';
+      } catch (err) {
+        console.warn('Bulk upload failed for', item.file.name, err);
+        results.failed++;
+        item.status = 'failed';
+        item.errorMsg = err.message;
+      }
+
+      // Small delay to avoid hammering
+      if (i < bulkUploadQueue.length - 1) {
+        await new Promise(r => setTimeout(r, 300));
+      }
+    }
+
+    // Final UI
+    document.getElementById('bulkUploadProgressBar').style.width = '100%';
+    document.getElementById('bulkUploadProgressLabel').textContent = bulkUploadCancelled ? 'Stopped.' : 'Done.';
+    document.getElementById('bulkUploadCurrentItem').textContent = '';
+
+    const resultEl = document.getElementById('bulkUploadResult');
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div style="padding:14px 18px; background:${results.failed ? 'rgba(212,168,67,0.1)' : 'rgba(0,180,177,0.1)'}; border-left:3px solid ${results.failed ? 'var(--gold)' : 'var(--teal)'}; border-radius:4px; font-size:13px;">
+        <strong>✓ ${results.success} image${results.success === 1 ? '' : 's'} uploaded and cataloged.</strong>
+        ${results.failed ? `<br><span style="color:#8c6f10;">${results.failed} failed</span> — usually a network or auth issue. Your PAT may have expired.` : ''}
+        ${results.skipped ? `<br><span style="color:rgba(13,27,42,0.6);">${results.skipped} intentionally skipped.</span>` : ''}
+        ${results.cancelled ? `<br><span style="color:rgba(13,27,42,0.6);">${results.cancelled} not processed (you stopped the run).</span>` : ''}
+      </div>
+    `;
+
+    startBtn.dataset.mode = 'close';
+    startBtn.textContent = 'Close';
+    startBtn.disabled = false;
   });
 
   // ============================================================
