@@ -430,6 +430,11 @@
 
     <button class="btn-new" id="newClientBtn">+ New client</button>
 
+    <button class="btn-help" id="settingsBtn">
+      <span>Settings &amp; AI keys</span>
+      <span id="aiStatusDot" style="width:8px; height:8px; border-radius:50%; background:rgba(245,239,224,0.25); display:inline-block;"></span>
+    </button>
+
     <button class="btn-help" id="helpBtn">
       <span>How to use this tool</span>
       <span style="font-family:'Hurricane',cursive; font-size:20px; color:var(--gold); line-height:0.8">?</span>
@@ -555,6 +560,9 @@
       <a href="#h-setup">Setting up a client</a>
       <a href="#h-wix">Adding Wix images</a>
       <a href="#h-github">Adding GitHub images</a>
+      <a href="#h-bulk">Bulk import</a>
+      <a href="#h-ai">AI descriptions</a>
+      <a href="#h-dup">Duplicates</a>
       <a href="#h-export">Using the export</a>
       <a href="#h-tips">Tips & gotchas</a>
       <a href="#h-handoff">Handing this off</a>
@@ -654,7 +662,50 @@
         <strong>Markdown vs JSON:</strong> Use Markdown by default. It's readable by both humans and Claude, and it'll render properly when you view it on GitHub. JSON is there only if you want to pipe the catalog into other automation later.
       </div>
 
-      <h4 id="h-tips"><span class="step-num">6</span> Tips, gotchas, and habits</h4>
+      <h4 id="h-bulk"><span class="step-num">6</span> Bulk import — paste a whole list at once</h4>
+      <p>If you already have a list of image URLs (from a spreadsheet, a doc, an old export, whatever), use the <code>+ Bulk import links</code> tab instead of adding one at a time.</p>
+      <ol>
+        <li>Click <code>+ Bulk import links</code> tab in any client's add-image area.</li>
+        <li>Paste URLs, one per line. Optionally add a description with <code>|</code> or <code> - </code>:
+          <ul>
+            <li><code>https://example.com/img.jpg</code></li>
+            <li><code>https://example.com/logo.png | Company logo used in footer</code></li>
+            <li><code>https://example.com/team.jpg - Team photo from 2024</code></li>
+          </ul>
+        </li>
+        <li>Click <code>Parse &amp; preview</code>. You'll see every row with its thumbnail, duplicates flagged, and editable name/description fields.</li>
+        <li>If you want AI to fill in descriptions for the empty rows, click <code>✨ Generate descriptions for empty rows</code>. Costs roughly 1-2¢ per image.</li>
+        <li>Click <code>Add all to catalog</code>. Duplicates get replaced, new ones get added.</li>
+      </ol>
+
+      <h4 id="h-ai"><span class="step-num">7</span> AI descriptions (optional)</h4>
+      <p>If you drop an Anthropic API key in <code>Settings</code>, every add form gets an <code>✨ Describe with AI</code> button. Claude reads the image and writes the description, alt text, and tags for you.</p>
+      <ul>
+        <li><strong>No key set?</strong> Buttons still work — they fall back to a cleaned-up version of the filename.</li>
+        <li><strong>Vision fails?</strong> If Wix blocks the image from CORS fetching (rare but possible on older Wix sites), you'll see a toast and it falls back to the filename. You can always paste a description manually.</li>
+        <li><strong>Your key is private.</strong> It lives in this browser's localStorage only, and is only sent directly to Anthropic — never stored on any server.</li>
+        <li><strong>Cost:</strong> Roughly 1-2¢ per image. A full bulk import of 100 images is about $1-2. You'll get a confirmation prompt before any bulk run.</li>
+      </ul>
+
+      <h4 id="h-dup"><span class="step-num">8</span> Duplicate detection</h4>
+      <p>Every time you add an image, the tool checks if you already have it. Three checks happen:</p>
+      <ol>
+        <li><strong>Exact URL match</strong> — instant, free.</li>
+        <li><strong>Filename match</strong> — catches re-uploads of the same filename (e.g. updating a flyer).</li>
+        <li><strong>Byte-identical hash</strong> — catches re-uploads of the same file even if renamed.</li>
+      </ol>
+      <p>When a duplicate is caught, you'll see a modal showing both side-by-side. You can:</p>
+      <ul>
+        <li><strong>Replace existing</strong> — overwrites the old entry with your new one. Good for "I updated the flyer with new dates."</li>
+        <li><strong>Keep both</strong> — adds it as a new entry. Good for "this is a different image that happens to have the same filename."</li>
+        <li><strong>Cancel</strong> — don't add anything.</li>
+        <li><strong>🔍 Compare with Claude</strong> — if you're unsure, Claude Vision looks at both images and tells you if they're identical, an updated version, or actually different. Uses one API call.</li>
+      </ul>
+      <div class="tip-box">
+        <strong>The honest limit:</strong> This catches byte-identical files, same URLs, and same filenames. It can't catch "same photo but a different JPG compression" or "same flyer resaved" unless you run <code>Compare with Claude</code> manually.
+      </div>
+
+      <h4 id="h-tips"><span class="step-num">9</span> Tips, gotchas, and habits</h4>
       <ul>
         <li><strong>Write descriptions for Claude, not for yourself.</strong> "Hero image" means nothing to Claude. "Wide-angle photo of a commercial metal fire door with push bar, natural light, used as hero on the homepage" means everything.</li>
         <li><strong>Update the "used on" field.</strong> This is how you avoid putting the same hero image on three different pages.</li>
@@ -663,7 +714,7 @@
         <li><strong>Broken thumbnails aren't broken entries.</strong> If a Wix URL's preview fails (some are CDN-restricted), the URL is still saved correctly. Test the URL in a new browser tab to confirm.</li>
       </ul>
 
-      <h4 id="h-handoff"><span class="step-num">7</span> Handing this off to a VA or teammate</h4>
+      <h4 id="h-handoff"><span class="step-num">10</span> Handing this off to a VA or teammate</h4>
       <p>If someone else is going to maintain the catalog:</p>
       <ol>
         <li>Send them the HTML file. They save it somewhere and open it in a browser (Chrome, Edge, Firefox, Safari — any modern browser works).</li>
@@ -678,6 +729,98 @@
 
     <div class="modal-actions">
       <button class="btn btn-primary" id="helpClose">Got it</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <h3>Settings &amp; AI keys</h3>
+    <p class="sub">Stored on this device only (localStorage). Never sent anywhere except directly to the API it's labeled for.</p>
+
+    <div class="form-row">
+      <label>Anthropic API Key <span style="font-weight:400; color:rgba(13,27,42,0.5);">— for AI descriptions &amp; duplicate comparison</span></label>
+      <input type="password" id="settingsAnthropicKey" class="mono" placeholder="sk-ant-...">
+      <p style="font-size:12px; color:rgba(13,27,42,0.55); margin-top:4px;">Get one at console.anthropic.com → API keys. Roughly 1-2¢ per image described.</p>
+    </div>
+
+    <div class="form-row">
+      <label>Your display name <span style="font-weight:400; color:rgba(13,27,42,0.5);">— for multi-user attribution</span></label>
+      <input type="text" id="settingsDisplayName" placeholder="Erika">
+      <p style="font-size:12px; color:rgba(13,27,42,0.55); margin-top:4px;">Shows who added or updated each image so the team knows who owns what.</p>
+    </div>
+
+    <div style="padding:14px 16px; background:rgba(0,180,177,0.08); border-left:3px solid var(--teal); border-radius:4px; margin-top:20px; font-size:13px;">
+      <strong>How AI descriptions work:</strong><br>
+      With a key set: Claude Vision looks at each image and writes a practical description plus alt text and tags.<br>
+      Without a key: falls back to a cleaned-up version of the filename.
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="settingsCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="settingsSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Import modal -->
+<div class="modal-backdrop" id="bulkModal">
+  <div class="modal" style="max-width:820px;">
+    <h3>Bulk import links</h3>
+    <p class="sub">Paste a list of image URLs. One per line. You can also include a description with the pipe <code style="font-family:JetBrains Mono,monospace; background:rgba(13,27,42,0.06); padding:1px 5px; border-radius:3px">|</code> or <code style="font-family:JetBrains Mono,monospace; background:rgba(13,27,42,0.06); padding:1px 5px; border-radius:3px">-</code> separator.</p>
+
+    <div style="background:rgba(13,27,42,0.04); padding:12px 16px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.6; margin-bottom:14px; color:rgba(13,27,42,0.75);">
+      https://static.wixstatic.com/.../hero.jpg<br>
+      https://static.wixstatic.com/.../logo.png | Company logo used in footer<br>
+      https://static.wixstatic.com/.../team.jpg - Team photo from 2024 retreat
+    </div>
+
+    <div class="form-row">
+      <label>URLs</label>
+      <textarea id="bulkInput" rows="8" placeholder="Paste your URLs here, one per line..."></textarea>
+    </div>
+
+    <div id="bulkPreviewWrap" style="display:none; margin-top:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+        <strong id="bulkPreviewCount"></strong>
+        <button class="btn btn-secondary" id="bulkAIDescribeBtn" style="font-size:12px;">✨ Generate descriptions for empty rows</button>
+      </div>
+      <div id="bulkPreviewList" style="max-height:360px; overflow-y:auto; border:1px solid var(--line); border-radius:4px; background:white;"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="bulkCancelBtn">Cancel</button>
+      <button class="btn btn-secondary" id="bulkParseBtn">Parse &amp; preview</button>
+      <button class="btn btn-primary" id="bulkConfirmBtn" style="display:none;">Add all to catalog</button>
+    </div>
+  </div>
+</div>
+
+<!-- Duplicate detection modal -->
+<div class="modal-backdrop" id="dupModal">
+  <div class="modal">
+    <h3>Possible duplicate detected</h3>
+    <p class="sub" id="dupReason"></p>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0;">
+      <div>
+        <div style="font-size:11px; letter-spacing:1px; color:rgba(13,27,42,0.5); text-transform:uppercase; font-weight:700; margin-bottom:6px;">Existing</div>
+        <div id="dupExisting" style="border:1px solid var(--line); border-radius:4px; padding:12px; background:white;"></div>
+      </div>
+      <div>
+        <div style="font-size:11px; letter-spacing:1px; color:var(--magenta); text-transform:uppercase; font-weight:700; margin-bottom:6px;">New</div>
+        <div id="dupNew" style="border:1px solid var(--magenta); border-radius:4px; padding:12px; background:white;"></div>
+      </div>
+    </div>
+
+    <div id="dupCompareResult" style="display:none; padding:12px; background:var(--paper); border-left:3px solid var(--navy); border-radius:4px; font-size:13px; margin-bottom:12px;"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="dupCompareBtn">🔍 Compare with Claude</button>
+      <button class="btn btn-secondary" id="dupCancelBtn">Cancel</button>
+      <button class="btn btn-secondary" id="dupKeepBothBtn">Keep both</button>
+      <button class="btn btn-primary" id="dupReplaceBtn">Replace existing</button>
     </div>
   </div>
 </div>
@@ -798,6 +941,7 @@
       <div class="add-tabs">
         <button class="add-tab ${addMode === 'wix' ? 'active' : ''}" data-mode="wix">+ Add existing Wix image</button>
         <button class="add-tab ${addMode === 'github' ? 'active' : ''}" data-mode="github">+ Add new GitHub image</button>
+        <button class="add-tab" id="openBulkTabBtn" data-mode="bulk">+ Bulk import links</button>
       </div>
 
       <section class="card with-tabs" id="addCard">${renderAddForm(client)}</section>
@@ -838,7 +982,10 @@
           </div>
         </div>
         <div class="form-row">
-          <label>Description (what's in it, what it's for)</label>
+          <label style="display:flex; justify-content:space-between; align-items:center;">
+            <span>Description (what's in it, what it's for)</span>
+            <button type="button" class="btn" id="wixAIBtn" style="padding:4px 10px; font-size:11px;">✨ Describe with AI</button>
+          </label>
           <textarea id="wixDescInput" rows="2" placeholder="Exterior shot of commercial fire door, used as homepage hero"></textarea>
         </div>
         <div class="form-grid">
@@ -896,7 +1043,10 @@
             </div>
           </div>
           <div class="form-row">
-            <label>Description</label>
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Description</span>
+              <button type="button" class="btn" id="ghAIBtn" style="padding:4px 10px; font-size:11px;">✨ Describe with AI</button>
+            </label>
             <textarea id="ghDescInput" rows="2"></textarea>
           </div>
           <div class="form-grid">
@@ -1389,6 +1539,660 @@
       document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
     }
   });
+
+  // ============================================================
+  // AI + SETTINGS + DUPLICATE DETECTION + BULK IMPORT
+  // ============================================================
+
+  const SETTINGS_KEY = 'visible_catalog_settings_v1';
+  let settings = loadSettings();
+
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+      if (s) return s;
+    } catch {}
+    return { anthropicKey: '', displayName: '' };
+  }
+
+  function saveSettings() {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    updateAIStatusDot();
+  }
+
+  function updateAIStatusDot() {
+    const dot = $('aiStatusDot');
+    if (!dot) return;
+    if (settings.anthropicKey) {
+      dot.style.background = 'var(--teal)';
+      dot.style.boxShadow = '0 0 6px var(--teal)';
+    } else {
+      dot.style.background = 'rgba(245,239,224,0.25)';
+      dot.style.boxShadow = 'none';
+    }
+  }
+
+  // ---------- Settings modal ----------
+  $('settingsBtn').addEventListener('click', () => {
+    $('settingsAnthropicKey').value = settings.anthropicKey || '';
+    $('settingsDisplayName').value = settings.displayName || '';
+    $('settingsModal').classList.add('show');
+  });
+  $('settingsCancelBtn').addEventListener('click', () => $('settingsModal').classList.remove('show'));
+  $('settingsSaveBtn').addEventListener('click', () => {
+    settings.anthropicKey = $('settingsAnthropicKey').value.trim();
+    settings.displayName = $('settingsDisplayName').value.trim();
+    saveSettings();
+    $('settingsModal').classList.remove('show');
+    toast('Settings saved.');
+  });
+
+  // ---------- Filename fallback ----------
+  function filenameFallback(filenameOrUrl) {
+    let base = filenameOrUrl;
+    // strip URL path
+    try {
+      const u = new URL(filenameOrUrl);
+      base = u.pathname.split('/').pop() || filenameOrUrl;
+    } catch {}
+    // strip extension
+    base = base.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!base) return 'Image';
+    return base.replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  // ---------- Fetch image as base64 (for Vision API) ----------
+  async function fetchImageAsBase64(urlOrFile) {
+    if (urlOrFile instanceof File) {
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const result = e.target.result;
+          const mediaType = result.substring(5, result.indexOf(';'));
+          const base64 = result.split(',')[1];
+          resolve({ base64, mediaType });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(urlOrFile);
+      });
+    }
+    // It's a URL — try to fetch via CORS
+    const res = await fetch(urlOrFile, { mode: 'cors' });
+    if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+    const blob = await res.blob();
+    const mediaType = blob.type || 'image/jpeg';
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve({ base64: e.target.result.split(',')[1], mediaType });
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // ---------- Call Claude Vision ----------
+  async function describeWithClaude(base64, mediaType) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: 'You\'re cataloging this image for a client image library. Respond with ONLY a JSON object in this exact shape, no preamble, no markdown fences:\n{"description":"1-2 sentence practical description of what\'s in it and what it might be for","alt":"short alt text under 12 words","tags":"3-5 comma-separated lowercase tags"}\n\nBe direct and factual. No "this image shows" preamble. No flowery language.' }
+          ]
+        }]
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API ${res.status}`);
+    }
+    const data = await res.json();
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join(' ').trim();
+    // Strip any ```json fences defensively
+    const clean = text.replace(/^```json\s*|\s*```$/g, '').trim();
+    try {
+      return JSON.parse(clean);
+    } catch {
+      // If Claude didn't return valid JSON, use whole text as description
+      return { description: text, alt: '', tags: '' };
+    }
+  }
+
+  // ---------- Compare two images with Claude ----------
+  async function compareImagesWithClaude(urlA, urlB) {
+    const [a, b] = await Promise.all([
+      fetchImageAsBase64(urlA),
+      fetchImageAsBase64(urlB)
+    ]);
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': settings.anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Compare these two images. Image A (existing):' },
+            { type: 'image', source: { type: 'base64', media_type: a.mediaType, data: a.base64 } },
+            { type: 'text', text: 'Image B (new):' },
+            { type: 'image', source: { type: 'base64', media_type: b.mediaType, data: b.base64 } },
+            { type: 'text', text: 'Respond with ONLY a JSON object, no preamble:\n{"verdict":"identical|updated|different","explanation":"1 sentence plain English"}\n\n"identical" = same image exactly.\n"updated" = same subject/design but something changed (text, date, colors, small edits).\n"different" = not the same image.' }
+          ]
+        }]
+      })
+    });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    const data = await res.json();
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join(' ').trim();
+    const clean = text.replace(/^```json\s*|\s*```$/g, '').trim();
+    try { return JSON.parse(clean); } catch { return { verdict: 'unknown', explanation: text }; }
+  }
+
+  // ---------- SHA-256 hash of a File ----------
+  async function sha256OfFile(file) {
+    const buf = await file.arrayBuffer();
+    const hash = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // ---------- Duplicate detection ----------
+  function findDuplicate(client, candidate) {
+    // candidate: { url?, filename?, hash? }
+    const imgs = client.images || [];
+    // 1. Exact URL match
+    if (candidate.url) {
+      const match = imgs.find(i => i.url === candidate.url);
+      if (match) return { match, reason: 'exact-url', reasonText: 'You already have an image with this exact URL in this client\'s catalog.' };
+    }
+    // 2. Hash match (uploaded files that are byte-identical)
+    if (candidate.hash) {
+      const match = imgs.find(i => i.hash === candidate.hash);
+      if (match) return { match, reason: 'exact-hash', reasonText: 'This file is byte-for-byte identical to an image you already added.' };
+    }
+    // 3. Filename match (helps catch "v2" of same thing)
+    if (candidate.filename) {
+      const lc = candidate.filename.toLowerCase();
+      const match = imgs.find(i => (i.filename || '').toLowerCase() === lc);
+      if (match) return { match, reason: 'filename', reasonText: 'An image with this filename already exists. Might be an update.' };
+    }
+    return null;
+  }
+
+  // ---------- Show duplicate modal ----------
+  let pendingDupResolve = null;
+  let pendingDupContext = null;
+
+  function renderImageCard(img) {
+    return `
+      <div style="display:flex; gap:10px; align-items:flex-start;">
+        ${img.url ? `<img src="${escapeHtml(img.url)}" style="width:60px; height:60px; object-fit:cover; border-radius:3px; background:var(--cream); flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+        <div style="min-width:0; flex:1;">
+          <div style="font-weight:600; font-size:13px; margin-bottom:3px; word-break:break-word;">${escapeHtml(img.name || '(unnamed)')}</div>
+          <div style="font-size:11px; color:rgba(13,27,42,0.55); word-break:break-all; font-family:'JetBrains Mono',monospace; margin-bottom:4px;">${escapeHtml(img.filename || (img.url || '').slice(-40))}</div>
+          ${img.description ? `<div style="font-size:11px; color:rgba(13,27,42,0.7); line-height:1.4;">${escapeHtml(img.description.slice(0, 120))}${img.description.length > 120 ? '…' : ''}</div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function promptDuplicate(existing, newImg, reasonText) {
+    return new Promise(resolve => {
+      pendingDupResolve = resolve;
+      pendingDupContext = { existing, newImg };
+      $('dupReason').textContent = reasonText;
+      $('dupExisting').innerHTML = renderImageCard(existing);
+      $('dupNew').innerHTML = renderImageCard(newImg);
+      $('dupCompareResult').style.display = 'none';
+      $('dupCompareResult').innerHTML = '';
+      // Only show compare button if both have URLs and API key is set
+      $('dupCompareBtn').style.display = (settings.anthropicKey && existing.url && newImg.url) ? '' : 'none';
+      $('dupModal').classList.add('show');
+    });
+  }
+
+  function resolveDuplicate(action) {
+    $('dupModal').classList.remove('show');
+    if (pendingDupResolve) {
+      pendingDupResolve(action);
+      pendingDupResolve = null;
+      pendingDupContext = null;
+    }
+  }
+
+  $('dupCancelBtn').addEventListener('click', () => resolveDuplicate('cancel'));
+  $('dupKeepBothBtn').addEventListener('click', () => resolveDuplicate('keep-both'));
+  $('dupReplaceBtn').addEventListener('click', () => resolveDuplicate('replace'));
+  $('dupCompareBtn').addEventListener('click', async () => {
+    if (!pendingDupContext) return;
+    const btn = $('dupCompareBtn');
+    btn.disabled = true;
+    btn.textContent = 'Comparing...';
+    try {
+      const result = await compareImagesWithClaude(
+        pendingDupContext.existing.url,
+        pendingDupContext.newImg.url
+      );
+      const box = $('dupCompareResult');
+      const colors = { identical: 'var(--magenta)', updated: 'var(--gold)', different: 'var(--teal)' };
+      box.style.borderLeft = `3px solid ${colors[result.verdict] || 'var(--navy)'}`;
+      box.innerHTML = `<strong style="text-transform:uppercase; letter-spacing:1px; font-size:11px;">${escapeHtml(result.verdict)}</strong><br>${escapeHtml(result.explanation)}`;
+      box.style.display = 'block';
+    } catch (err) {
+      toast('Compare failed: ' + err.message);
+    }
+    btn.disabled = false;
+    btn.textContent = '🔍 Compare with Claude';
+  });
+
+  // ---------- AI describe button for Wix form ----------
+  document.addEventListener('click', async (e) => {
+    if (e.target.id !== 'wixAIBtn') return;
+    const url = $('wixUrlInput').value.trim();
+    if (!url) { toast('Paste a Wix URL first.'); return; }
+    const btn = e.target;
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Describing...';
+    try {
+      if (!settings.anthropicKey) {
+        $('wixDescInput').value = filenameFallback(url);
+        toast('No API key set — used filename. Add one in Settings.');
+      } else {
+        const { base64, mediaType } = await fetchImageAsBase64(url);
+        const result = await describeWithClaude(base64, mediaType);
+        $('wixDescInput').value = result.description || '';
+        if (result.alt && !$('wixAltInput').value) $('wixAltInput').value = result.alt;
+        if (result.tags && !$('wixTagsInput').value) $('wixTagsInput').value = result.tags;
+        toast('Described by Claude.');
+      }
+    } catch (err) {
+      console.warn('Vision failed, falling back to filename', err);
+      $('wixDescInput').value = filenameFallback(url);
+      toast('Vision failed (CORS?). Used filename fallback.');
+    }
+    btn.disabled = false;
+    btn.textContent = orig;
+  });
+
+  // ---------- AI describe button for GitHub form ----------
+  document.addEventListener('click', async (e) => {
+    if (e.target.id !== 'ghAIBtn') return;
+    const preview = $('ghOutput')?.dataset?.preview;
+    const filename = $('ghFilenameInput')?.value?.trim();
+    const btn = e.target;
+    const orig = btn.textContent;
+    if (!preview) {
+      if (filename) {
+        $('ghDescInput').value = filenameFallback(filename);
+        toast('No image loaded — used filename.');
+      } else {
+        toast('Drop a file first.');
+      }
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Describing...';
+    try {
+      if (!settings.anthropicKey) {
+        $('ghDescInput').value = filenameFallback(filename || 'image');
+        toast('No API key set — used filename. Add one in Settings.');
+      } else {
+        // preview is already a data URL
+        const mediaType = preview.substring(5, preview.indexOf(';'));
+        const base64 = preview.split(',')[1];
+        const result = await describeWithClaude(base64, mediaType);
+        $('ghDescInput').value = result.description || '';
+        if (result.alt && !$('ghAltInput').value) $('ghAltInput').value = result.alt;
+        if (result.tags && !$('ghTagsInput').value) $('ghTagsInput').value = result.tags;
+        toast('Described by Claude.');
+      }
+    } catch (err) {
+      $('ghDescInput').value = filenameFallback(filename || 'image');
+      toast('Vision failed. Used filename fallback.');
+    }
+    btn.disabled = false;
+    btn.textContent = orig;
+  });
+
+  // ============================================================
+  // BULK IMPORT
+  // ============================================================
+
+  let bulkPendingRows = []; // parsed rows to commit
+
+  $('openBulkTabBtn')?.addEventListener('click', () => {
+    if (!activeClientId) { toast('Pick or create a client first.'); return; }
+    openBulkModal();
+  });
+  // Also re-bind since openBulkTabBtn gets re-rendered
+  document.addEventListener('click', (e) => {
+    if (e.target.id === 'openBulkTabBtn') {
+      e.preventDefault();
+      if (!activeClientId) { toast('Pick or create a client first.'); return; }
+      openBulkModal();
+    }
+  });
+
+  function openBulkModal() {
+    $('bulkInput').value = '';
+    $('bulkPreviewWrap').style.display = 'none';
+    $('bulkPreviewList').innerHTML = '';
+    $('bulkConfirmBtn').style.display = 'none';
+    $('bulkParseBtn').style.display = '';
+    bulkPendingRows = [];
+    $('bulkModal').classList.add('show');
+  }
+
+  $('bulkCancelBtn').addEventListener('click', () => $('bulkModal').classList.remove('show'));
+
+  function parseBulkInput(raw) {
+    const rows = [];
+    raw.split('\n').forEach(line => {
+      line = line.trim();
+      if (!line) return;
+      // Try pipe separator
+      let sep = line.indexOf('|');
+      let desc = '';
+      let url = line;
+      if (sep > 0) {
+        url = line.slice(0, sep).trim();
+        desc = line.slice(sep + 1).trim();
+      } else {
+        // Try " - " separator (dash with spaces, so we don't break URLs containing dashes)
+        const dashMatch = line.match(/^(\S+?)\s+-\s+(.+)$/);
+        if (dashMatch) {
+          url = dashMatch[1].trim();
+          desc = dashMatch[2].trim();
+        }
+      }
+      if (!/^https?:\/\//.test(url)) return; // skip invalid
+      rows.push({ url, description: desc, name: '', source: detectSource(url), dup: null });
+    });
+    return rows;
+  }
+
+  $('bulkParseBtn').addEventListener('click', () => {
+    const raw = $('bulkInput').value;
+    const rows = parseBulkInput(raw);
+    if (rows.length === 0) {
+      toast('No valid URLs found.');
+      return;
+    }
+    // Duplicate check against current client
+    const client = getClient(activeClientId);
+    rows.forEach(r => {
+      r.dup = findDuplicate(client, { url: r.url });
+      if (!r.name) r.name = filenameFallback(r.url);
+    });
+    bulkPendingRows = rows;
+    renderBulkPreview();
+    $('bulkPreviewWrap').style.display = 'block';
+    $('bulkConfirmBtn').style.display = '';
+    $('bulkParseBtn').style.display = 'none';
+  });
+
+  function renderBulkPreview() {
+    $('bulkPreviewCount').textContent = `${bulkPendingRows.length} URL${bulkPendingRows.length === 1 ? '' : 's'} parsed`;
+    const html = bulkPendingRows.map((r, i) => `
+      <div style="padding:10px 14px; border-bottom:1px solid var(--line); display:grid; grid-template-columns:50px 1fr; gap:10px; align-items:start; ${r.skip ? 'opacity:0.4;' : ''}">
+        <img src="${escapeHtml(r.url)}" style="width:50px; height:50px; object-fit:cover; border-radius:3px; background:var(--cream);" onerror="this.style.visibility='hidden'">
+        <div style="min-width:0;">
+          <div style="display:flex; justify-content:space-between; gap:8px; margin-bottom:4px;">
+            <input data-idx="${i}" data-field="name" class="bulk-field" value="${escapeHtml(r.name)}" style="font-size:12px; font-weight:600; padding:3px 6px; border:1px solid var(--line); border-radius:3px; flex:1; min-width:0; font-family:inherit;">
+            <span style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:rgba(13,27,42,0.5); padding:4px 8px; background:var(--cream); border-radius:3px;">${r.source}</span>
+            ${r.dup ? `<span style="font-size:10px; letter-spacing:1px; text-transform:uppercase; color:white; padding:4px 8px; background:var(--magenta); border-radius:3px;">DUP</span>` : ''}
+          </div>
+          <textarea data-idx="${i}" data-field="description" class="bulk-field" placeholder="Description..." rows="1" style="width:100%; font-size:11px; padding:4px 6px; border:1px solid var(--line); border-radius:3px; font-family:inherit; resize:vertical;">${escapeHtml(r.description)}</textarea>
+          <div style="font-size:10px; color:rgba(13,27,42,0.5); font-family:'JetBrains Mono',monospace; margin-top:4px; word-break:break-all;">${escapeHtml(r.url.slice(0, 80))}${r.url.length > 80 ? '…' : ''}</div>
+          ${r.dup ? `
+            <div style="margin-top:6px; display:flex; gap:6px; align-items:center;">
+              <span style="font-size:11px; color:var(--magenta);">Duplicate of: ${escapeHtml(r.dup.match.name || '')}</span>
+              <button class="btn bulk-skip-btn" data-idx="${i}" style="padding:2px 8px; font-size:10px;">${r.skip ? 'Include' : 'Skip'}</button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `).join('');
+    $('bulkPreviewList').innerHTML = html;
+    // Wire inputs
+    $('bulkPreviewList').querySelectorAll('.bulk-field').forEach(el => {
+      el.addEventListener('input', () => {
+        const idx = parseInt(el.dataset.idx);
+        bulkPendingRows[idx][el.dataset.field] = el.value;
+      });
+    });
+    $('bulkPreviewList').querySelectorAll('.bulk-skip-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx);
+        bulkPendingRows[idx].skip = !bulkPendingRows[idx].skip;
+        renderBulkPreview();
+      });
+    });
+  }
+
+  $('bulkAIDescribeBtn').addEventListener('click', async () => {
+    if (!settings.anthropicKey) {
+      toast('Add your Anthropic key in Settings first.');
+      return;
+    }
+    const empties = bulkPendingRows.filter(r => !r.description && !r.skip);
+    if (empties.length === 0) {
+      toast('Nothing to describe — all rows have descriptions or are skipped.');
+      return;
+    }
+    if (!confirm(`This will make ${empties.length} API call${empties.length === 1 ? '' : 's'} to Claude (roughly $${(empties.length * 0.015).toFixed(2)}). Continue?`)) return;
+
+    const btn = $('bulkAIDescribeBtn');
+    btn.disabled = true;
+    let done = 0;
+    for (const row of empties) {
+      btn.textContent = `Describing ${done + 1} / ${empties.length}...`;
+      try {
+        const { base64, mediaType } = await fetchImageAsBase64(row.url);
+        const result = await describeWithClaude(base64, mediaType);
+        row.description = result.description || filenameFallback(row.url);
+        row.alt = result.alt || '';
+        row.tags = result.tags || '';
+      } catch (err) {
+        console.warn('Vision failed for', row.url, err);
+        row.description = filenameFallback(row.url);
+      }
+      done++;
+      renderBulkPreview();
+    }
+    btn.disabled = false;
+    btn.textContent = '✨ Generate descriptions for empty rows';
+    toast(`Described ${done} image${done === 1 ? '' : 's'}.`);
+  });
+
+  $('bulkConfirmBtn').addEventListener('click', async () => {
+    const client = getClient(activeClientId);
+    if (!client) { toast('No client.'); return; }
+
+    let added = 0, replaced = 0, skipped = 0;
+    client.images = client.images || [];
+
+    for (const row of bulkPendingRows) {
+      if (row.skip) { skipped++; continue; }
+
+      if (row.dup && row.dup.match) {
+        // Replace existing
+        const existing = client.images.find(i => i.id === row.dup.match.id);
+        if (existing) {
+          existing.url = row.url;
+          existing.name = row.name || existing.name;
+          existing.description = row.description || existing.description;
+          existing.alt = row.alt || existing.alt;
+          existing.tags = row.tags || existing.tags;
+          existing.source = row.source;
+          existing.updated = new Date().toISOString();
+          if (settings.displayName) existing.updatedBy = settings.displayName;
+          replaced++;
+        }
+      } else {
+        const img = {
+          id: uid(),
+          url: row.url,
+          source: row.source,
+          name: row.name || filenameFallback(row.url),
+          description: row.description || '',
+          tags: row.tags || '',
+          pages: '',
+          alt: row.alt || '',
+          added: new Date().toISOString()
+        };
+        if (settings.displayName) img.addedBy = settings.displayName;
+        client.images.unshift(img);
+        added++;
+      }
+    }
+
+    saveState();
+    $('bulkModal').classList.remove('show');
+    renderSidebar();
+    renderMain();
+    const parts = [];
+    if (added) parts.push(`${added} added`);
+    if (replaced) parts.push(`${replaced} replaced`);
+    if (skipped) parts.push(`${skipped} skipped`);
+    toast(parts.join(', ') || 'Done.');
+  });
+
+  // ============================================================
+  // HOOK INTO EXISTING WIX/GITHUB ADD BUTTONS FOR DUPLICATE CHECK
+  // ============================================================
+
+  // We intercept clicks on wixAddBtn and ghAddBtn BEFORE the existing handlers
+  // by using capture phase. If it's a duplicate, we prompt, then manually
+  // dispatch the add or handle replacement.
+
+  document.addEventListener('click', async (e) => {
+    if (e.target.id !== 'wixAddBtn' && e.target.id !== 'ghAddBtn') return;
+
+    const client = getClient(activeClientId);
+    if (!client) return;
+
+    let candidate;
+    if (e.target.id === 'wixAddBtn') {
+      const url = $('wixUrlInput').value.trim();
+      if (!url) return; // let existing handler show its own error
+      candidate = { url };
+    } else {
+      const url = $('ghUrlPreview')?.value?.trim();
+      const filename = $('ghFilenameInput')?.value?.trim();
+      if (!url || !filename) return;
+      candidate = { url, filename };
+    }
+
+    const dup = findDuplicate(client, candidate);
+    if (!dup) return; // no duplicate, let existing handler run
+
+    // Duplicate found — stop the existing handler from firing
+    e.stopImmediatePropagation();
+    e.preventDefault();
+
+    // Build what the new image would look like for the preview
+    const newPreview = e.target.id === 'wixAddBtn' ? {
+      url: candidate.url,
+      name: $('wixNameInput').value.trim() || filenameFallback(candidate.url),
+      description: $('wixDescInput').value.trim(),
+      filename: ''
+    } : {
+      url: candidate.url,
+      name: $('ghNameInput').value.trim() || candidate.filename,
+      description: $('ghDescInput').value.trim(),
+      filename: candidate.filename
+    };
+
+    const action = await promptDuplicate(dup.match, newPreview, dup.reasonText);
+
+    if (action === 'cancel') return;
+
+    if (action === 'replace') {
+      const existing = client.images.find(i => i.id === dup.match.id);
+      if (existing) {
+        existing.url = candidate.url;
+        if (e.target.id === 'wixAddBtn') {
+          existing.name = $('wixNameInput').value.trim() || existing.name;
+          existing.description = $('wixDescInput').value.trim() || existing.description;
+          existing.tags = $('wixTagsInput').value.trim() || existing.tags;
+          existing.pages = $('wixPagesInput').value.trim() || existing.pages;
+          existing.alt = $('wixAltInput').value.trim() || existing.alt;
+          existing.source = detectSource(candidate.url);
+        } else {
+          existing.name = $('ghNameInput').value.trim() || existing.name;
+          existing.description = $('ghDescInput').value.trim() || existing.description;
+          existing.tags = $('ghTagsInput').value.trim() || existing.tags;
+          existing.pages = $('ghPagesInput').value.trim() || existing.pages;
+          existing.alt = $('ghAltInput').value.trim() || existing.alt;
+          existing.filename = candidate.filename;
+          existing.source = 'github';
+        }
+        existing.updated = new Date().toISOString();
+        if (settings.displayName) existing.updatedBy = settings.displayName;
+        saveState();
+        renderSidebar();
+        renderMain();
+        toast('Replaced existing image.');
+      }
+      return;
+    }
+
+    if (action === 'keep-both') {
+      // Manually build the image and push — essentially replicating the existing handler's logic
+      let img;
+      if (e.target.id === 'wixAddBtn') {
+        img = {
+          id: uid(),
+          url: candidate.url,
+          source: detectSource(candidate.url),
+          name: $('wixNameInput').value.trim() || '(unnamed)',
+          description: $('wixDescInput').value.trim(),
+          tags: $('wixTagsInput').value.trim(),
+          pages: $('wixPagesInput').value.trim(),
+          alt: $('wixAltInput').value.trim(),
+          added: new Date().toISOString()
+        };
+      } else {
+        img = {
+          id: uid(),
+          url: candidate.url,
+          source: 'github',
+          filename: candidate.filename,
+          name: $('ghNameInput').value.trim() || candidate.filename,
+          description: $('ghDescInput').value.trim(),
+          tags: $('ghTagsInput').value.trim(),
+          pages: $('ghPagesInput').value.trim(),
+          alt: $('ghAltInput').value.trim(),
+          added: new Date().toISOString()
+        };
+      }
+      if (settings.displayName) img.addedBy = settings.displayName;
+      client.images = client.images || [];
+      client.images.unshift(img);
+      saveState();
+      renderSidebar();
+      renderMain();
+      toast('Added (kept both copies).');
+    }
+  }, true); // capture phase — runs before the existing handlers
+
+  // Initialize status dot on load
+  updateAIStatusDot();
 
   // ---------- Init ----------
   renderSidebar();
