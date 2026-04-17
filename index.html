@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Visible · Client Image Catalog</title>
+<title>Visible · Client Content Catalog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=Hurricane&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -296,6 +296,33 @@
     margin-bottom: 6px; line-height: 1;
   }
 
+  /* Backup reminder banner */
+  .backup-banner {
+    background: linear-gradient(90deg, rgba(212,168,67,0.15), rgba(201,64,128,0.1));
+    border-left: 3px solid var(--gold);
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .backup-banner .msg { color: var(--navy); flex: 1; }
+  .backup-banner .msg strong { color: #8c6f10; }
+  .backup-banner button {
+    background: var(--navy); color: var(--cream); border: none;
+    padding: 7px 14px; border-radius: 4px; font-size: 12px;
+    font-weight: 500; cursor: pointer; font-family: inherit;
+    letter-spacing: 0.04em;
+  }
+  .backup-banner button:hover { background: var(--teal); color: var(--navy); }
+  .backup-banner button.dismiss {
+    background: transparent; color: rgba(13,27,42,0.5); padding: 4px 8px;
+  }
+  .backup-banner button.dismiss:hover { background: rgba(13,27,42,0.06); color: var(--navy); }
+
   /* View toggle (Images / Resources) */
   .view-toggle {
     display: flex; gap: 4px; margin-bottom: 20px; padding: 4px;
@@ -501,7 +528,7 @@
   <aside>
     <div class="brand">
       <span class="kicker">visible ·</span>
-      <h1>Image <span>Catalog</span></h1>
+      <h1>Content <span>Catalog</span></h1>
     </div>
 
     <div>
@@ -633,7 +660,7 @@
 <!-- Modal: help / instructions -->
 <div class="modal-backdrop" id="helpModal">
   <div class="modal help-modal">
-    <h3>How to use the Image Catalog</h3>
+    <h3>How to use the Content Catalog</h3>
     <p class="sub">A reference for you, your team, or anyone you hand this off to. You can reopen this anytime.</p>
 
     <div class="help-toc">
@@ -689,7 +716,7 @@
       <ol>
         <li>Go to the client's live Wix site or Wix editor.</li>
         <li>Right-click the image you want to catalog → <strong>Copy image address</strong>.</li>
-        <li>In the Image Catalog, make sure you're on the <code>+ Add existing Wix image</code> tab.</li>
+        <li>In the Content Catalog, make sure you're on the <code>+ Add existing Wix image</code> tab.</li>
         <li>Paste the URL into the <strong>Wix image URL</strong> field. A preview should appear.</li>
         <li>Fill in:
           <ul>
@@ -870,6 +897,33 @@
       <strong>How AI descriptions work:</strong><br>
       With a key set: Claude Vision looks at each image and writes a practical description plus alt text and tags.<br>
       Without a key: falls back to a cleaned-up version of the filename.
+    </div>
+
+    <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line);">
+      <h4 style="font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:0.04em; margin-bottom:6px;">Backup &amp; restore</h4>
+      <p style="font-size:13px; color:rgba(13,27,42,0.65); margin-bottom:14px;">
+        Your entire catalog lives in this browser's localStorage. Download a backup periodically — especially before switching browsers or clearing data. The file contains all clients, images, resources, and settings except your API keys (those stay local for security).
+      </p>
+
+      <div id="backupStatusBox" style="padding:10px 14px; background:var(--paper); border-radius:4px; font-size:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+        <span id="backupStatusText" style="color:rgba(13,27,42,0.7);"></span>
+      </div>
+
+      <div class="form-row">
+        <label>Remind me to backup after (days)</label>
+        <input type="number" id="settingsBackupDays" min="1" max="365" step="1" value="7" style="max-width:120px;">
+        <p style="font-size:12px; color:rgba(13,27,42,0.55); margin-top:4px;">A reminder banner appears at the top of the page when it's been this many days since your last backup.</p>
+      </div>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-secondary" id="backupDownloadBtn">⬇ Download backup</button>
+        <button class="btn btn-secondary" id="backupRestoreBtn">⬆ Restore from file</button>
+        <input type="file" id="backupRestoreFile" accept=".json,application/json" style="display:none;">
+      </div>
+
+      <p style="font-size:11px; color:rgba(13,27,42,0.5); margin-top:10px; font-style:italic;">
+        Restore replaces your current catalog entirely. Download a backup first if you're not sure.
+      </p>
     </div>
 
     <div class="modal-actions">
@@ -1120,11 +1174,12 @@
     const main = $('mainPane');
 
     if (!activeClientId || !getClient(activeClientId)) {
-      main.innerHTML = `
+      main.innerHTML = renderBackupBanner() + `
         <div class="empty-state" style="padding-top:120px">
           <div class="big">get started</div>
           <div style="max-width:420px; margin:0 auto">Create a client workspace in the sidebar. Each client gets its own image catalog that you can export for Claude to read in future chats.</div>
         </div>`;
+      attachBackupBannerEvents();
       return;
     }
 
@@ -1132,7 +1187,7 @@
     const imgs = client.images || [];
     const resources = client.resources || [];
 
-    const header = `
+    const header = renderBackupBanner() + `
       <div class="client-header">
         <div>
           <h2>${escapeHtml(client.name)}<span class="edit" id="editClient">edit</span></h2>
@@ -1581,6 +1636,7 @@
       attachAddFormEvents();
       attachCardEvents();
     }
+    attachBackupBannerEvents();
   }
 
   // ---------- Resource form events ----------
@@ -1607,7 +1663,7 @@
             id: uid(),
             url,
             type,
-            name: name || filenameFallback(url),
+            name: name || resourceNameFallback(url, type),
             description: '',
             tags: '',
             pages: '',
@@ -1638,11 +1694,12 @@
     $('resourceAddBtn')?.addEventListener('click', () => {
       const url = $('resourceUrlInput').value.trim();
       if (!url) { toast('Paste a URL first.'); return; }
+      const resType = $('resourceTypeInput').value;
       const resource = {
         id: uid(),
         url,
-        type: $('resourceTypeInput').value,
-        name: $('resourceNameInput').value.trim() || '(unnamed)',
+        type: resType,
+        name: $('resourceNameInput').value.trim() || resourceNameFallback(url, resType),
         description: $('resourceDescInput').value.trim(),
         tags: $('resourceTagsInput').value.trim(),
         pages: $('resourcePagesInput').value.trim(),
@@ -2292,6 +2349,89 @@
     return base.replace(/\b\w/g, c => c.toUpperCase());
   }
 
+  // Smart name fallback for resources (non-image URLs).
+  // Uses the resource type label as a base, and tries to pull an identifiable
+  // fragment from the URL when one exists (YouTube video ID, Calendly username,
+  // Instagram handle, etc.). Never returns a random hash.
+  function resourceNameFallback(url, type) {
+    if (!url) return RESOURCE_TYPE_LABELS[type] || 'Resource';
+    const typeLabel = RESOURCE_TYPE_LABELS[type] || 'Resource';
+    let hostname = '';
+    let pathname = '';
+    let search = '';
+    try {
+      const u = new URL(url);
+      hostname = u.hostname.replace(/^www\./, '');
+      pathname = u.pathname;
+      search = u.search;
+    } catch {
+      return typeLabel;
+    }
+
+    // Type-specific extraction
+    switch (type) {
+      case 'youtube': {
+        // youtu.be/ID or youtube.com/watch?v=ID or youtube.com/@channel
+        if (hostname.includes('youtu.be')) {
+          const id = pathname.replace(/^\//, '').split('/')[0];
+          if (id) return `YouTube video (${id})`;
+        }
+        const params = new URLSearchParams(search);
+        if (params.get('v')) return `YouTube video (${params.get('v')})`;
+        const channelMatch = pathname.match(/\/@([a-zA-Z0-9_.-]+)/);
+        if (channelMatch) return `YouTube · @${channelMatch[1]}`;
+        return typeLabel;
+      }
+      case 'calendly': {
+        // calendly.com/username/event-name
+        const parts = pathname.split('/').filter(Boolean);
+        if (parts.length >= 2) return `Calendly · ${parts[0]} / ${parts[1].replace(/-/g, ' ')}`;
+        if (parts.length === 1) return `Calendly · ${parts[0]}`;
+        return typeLabel;
+      }
+      case 'social-profile': {
+        // e.g. instagram.com/username, linkedin.com/in/name, tiktok.com/@user
+        const parts = pathname.split('/').filter(Boolean);
+        let service = 'Social';
+        if (hostname.includes('instagram')) service = 'Instagram';
+        else if (hostname.includes('tiktok')) service = 'TikTok';
+        else if (hostname.includes('linkedin')) service = 'LinkedIn';
+        else if (hostname.includes('facebook')) service = 'Facebook';
+        else if (hostname.includes('x.com') || hostname.includes('twitter')) service = 'X/Twitter';
+        // Find the last meaningful segment that looks like a handle
+        const handle = parts.reverse().find(p => p.length > 0 && !['in', 'profile', 'pages'].includes(p));
+        if (handle) return `${service} · ${handle.replace(/^@/, '@')}`;
+        return service;
+      }
+      case 'google-form':
+      case 'typeform':
+      case 'signup-form':
+        return `${typeLabel} · ${hostname}`;
+      case 'google-doc':
+      case 'google-sheet':
+      case 'google-drive':
+      case 'notion':
+      case 'airtable':
+        // These URLs have hashes we can't decode, so just use the type + host
+        return typeLabel;
+      case 'stripe':
+      case 'payment-link':
+        return `${typeLabel} · ${hostname}`;
+      case 'landing-page':
+      case 'other': {
+        // Use hostname + first meaningful path segment
+        const parts = pathname.split('/').filter(Boolean);
+        const firstPart = parts[0];
+        if (firstPart && firstPart.length < 30 && !/^[a-f0-9]{16,}$/i.test(firstPart)) {
+          return `${hostname}/${firstPart}`;
+        }
+        return hostname;
+      }
+      default:
+        return typeLabel;
+    }
+  }
+
   // ---------- Fetch image as base64 (for Vision API) ----------
   async function fetchImageAsBase64(urlOrFile) {
     if (urlOrFile instanceof File) {
@@ -2913,6 +3053,215 @@
     document.getElementById('resourceModal').classList.remove('show');
     renderMain();
     toast('Resource updated.');
+  });
+
+  // ============================================================
+  // BACKUP / RESTORE
+  // ============================================================
+
+  const BACKUP_META_KEY = 'visible_catalog_backup_meta';
+
+  function getBackupMeta() {
+    try {
+      const s = JSON.parse(localStorage.getItem(BACKUP_META_KEY));
+      if (s) return { lastBackup: null, thresholdDays: 7, dismissedUntil: null, ...s };
+    } catch {}
+    return { lastBackup: null, thresholdDays: 7, dismissedUntil: null };
+  }
+
+  function saveBackupMeta(meta) {
+    localStorage.setItem(BACKUP_META_KEY, JSON.stringify(meta));
+  }
+
+  function daysSince(iso) {
+    if (!iso) return null;
+    try {
+      const then = new Date(iso).getTime();
+      return (Date.now() - then) / 86400000;
+    } catch { return null; }
+  }
+
+  function shouldShowBackupBanner() {
+    const meta = getBackupMeta();
+    // Don't show if nothing to back up yet
+    if (!state.clients || state.clients.length === 0) return false;
+    // Respect dismissal
+    if (meta.dismissedUntil && Date.now() < meta.dismissedUntil) return false;
+    // Never backed up?
+    if (!meta.lastBackup) {
+      // Only nag once the catalog has something in it
+      const hasData = state.clients.some(c => (c.images?.length || 0) + (c.resources?.length || 0) > 0);
+      return hasData;
+    }
+    const days = daysSince(meta.lastBackup);
+    return days !== null && days >= (meta.thresholdDays || 7);
+  }
+
+  function renderBackupBanner() {
+    if (!shouldShowBackupBanner()) return '';
+    const meta = getBackupMeta();
+    let msg;
+    if (!meta.lastBackup) {
+      msg = `<strong>You haven't backed up yet.</strong> Your catalog lives in this browser only — if it's wiped, everything is gone. Download a backup now.`;
+    } else {
+      const days = Math.floor(daysSince(meta.lastBackup));
+      msg = `<strong>Backup reminder:</strong> it's been ${days} day${days === 1 ? '' : 's'} since your last backup. Your catalog is only in this browser.`;
+    }
+    return `
+      <div class="backup-banner">
+        <div class="msg">${msg}</div>
+        <button id="bannerBackupBtn">⬇ Backup now</button>
+        <button class="dismiss" id="bannerDismissBtn" title="Hide for 24 hours">✕</button>
+      </div>`;
+  }
+
+  function attachBackupBannerEvents() {
+    $('bannerBackupBtn')?.addEventListener('click', () => downloadBackup());
+    $('bannerDismissBtn')?.addEventListener('click', () => {
+      const meta = getBackupMeta();
+      meta.dismissedUntil = Date.now() + 86400000; // 24 hrs
+      saveBackupMeta(meta);
+      // Remove the banner element
+      document.querySelector('.backup-banner')?.remove();
+      toast('Hidden for 24 hours. Backup when you can.');
+    });
+  }
+
+  function downloadBackup() {
+    // Build the full payload — everything in localStorage except API keys
+    const payload = {
+      _format: 'visible-catalog-backup',
+      _version: 1,
+      _exported: new Date().toISOString(),
+      _exportedBy: settings.displayName || null,
+      state: state,
+      settings: {
+        displayName: settings.displayName || '',
+        // Intentionally excluded: anthropicKey, githubPat — never put secrets in a portable backup file
+      },
+      backupMeta: getBackupMeta()
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `visible-catalog-backup-${ts}.json`;
+    a.click();
+
+    // Mark backed up
+    const meta = getBackupMeta();
+    meta.lastBackup = new Date().toISOString();
+    meta.dismissedUntil = null;
+    saveBackupMeta(meta);
+
+    // Remove banner if visible
+    document.querySelector('.backup-banner')?.remove();
+    updateBackupStatusBox();
+    toast('Backup downloaded. Save it somewhere safe.');
+  }
+
+  function restoreBackup(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data._format !== 'visible-catalog-backup') {
+          throw new Error('Not a Visible catalog backup file.');
+        }
+        if (!data.state || !Array.isArray(data.state.clients)) {
+          throw new Error('Backup file is missing client data.');
+        }
+        const confirmMsg = `Restore from backup?\n\nExported: ${data._exported || 'unknown'}\nExported by: ${data._exportedBy || 'unknown'}\nClients: ${data.state.clients.length}\n\nThis will REPLACE your current catalog (${state.clients.length} client${state.clients.length === 1 ? '' : 's'}).\n\nYour API keys will NOT be touched.`;
+        if (!confirm(confirmMsg)) return;
+
+        // Restore state
+        state = data.state;
+        activeClientId = state.activeClientId || state.clients[0]?.id || null;
+        saveState();
+
+        // Restore display name (but NOT keys)
+        if (data.settings?.displayName && !settings.displayName) {
+          settings.displayName = data.settings.displayName;
+          saveSettings();
+        }
+
+        // Mark the restore point as a backup
+        const meta = getBackupMeta();
+        meta.lastBackup = new Date().toISOString();
+        meta.dismissedUntil = null;
+        saveBackupMeta(meta);
+
+        renderSidebar();
+        renderMain();
+        $('settingsModal').classList.remove('show');
+        toast(`Restored ${state.clients.length} client${state.clients.length === 1 ? '' : 's'} from backup.`);
+      } catch (err) {
+        console.error(err);
+        toast('Restore failed: ' + err.message);
+      }
+    };
+    reader.onerror = () => toast('Could not read file.');
+    reader.readAsText(file);
+  }
+
+  function updateBackupStatusBox() {
+    const box = $('backupStatusText');
+    if (!box) return;
+    const meta = getBackupMeta();
+    if (!meta.lastBackup) {
+      box.innerHTML = '<strong style="color:var(--magenta);">Never backed up</strong> — your data only exists in this browser';
+    } else {
+      const days = Math.floor(daysSince(meta.lastBackup));
+      const when = new Date(meta.lastBackup).toLocaleString();
+      const color = days >= (meta.thresholdDays || 7) ? 'var(--magenta)' : 'var(--teal)';
+      box.innerHTML = `Last backup: <strong style="color:${color};">${days === 0 ? 'today' : days + 'd ago'}</strong> <span style="color:rgba(13,27,42,0.5);">(${when})</span>`;
+    }
+  }
+
+  // Wire up backup/restore buttons
+  document.getElementById('backupDownloadBtn')?.addEventListener('click', () => downloadBackup());
+  document.getElementById('backupRestoreBtn')?.addEventListener('click', () => {
+    document.getElementById('backupRestoreFile').click();
+  });
+  document.getElementById('backupRestoreFile')?.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) restoreBackup(f);
+    e.target.value = ''; // reset so same file can be re-selected later
+  });
+
+  // Update backup threshold in settings save
+  const origSaveBtn = document.getElementById('settingsSaveBtn');
+  if (origSaveBtn) {
+    // Clone to remove previous listener, then re-attach expanded version
+    const newBtn = origSaveBtn.cloneNode(true);
+    origSaveBtn.parentNode.replaceChild(newBtn, origSaveBtn);
+    newBtn.addEventListener('click', () => {
+      settings.anthropicKey = $('settingsAnthropicKey').value.trim();
+      settings.githubPat = $('settingsGithubPat').value.trim();
+      settings.displayName = $('settingsDisplayName').value.trim();
+      saveSettings();
+
+      // Save backup threshold
+      const days = parseInt(document.getElementById('settingsBackupDays').value, 10);
+      if (!isNaN(days) && days > 0) {
+        const meta = getBackupMeta();
+        meta.thresholdDays = days;
+        saveBackupMeta(meta);
+      }
+
+      $('settingsModal').classList.remove('show');
+      toast('Settings saved.');
+    });
+  }
+
+  // When settings modal opens, populate the threshold field and status box
+  const origSettingsBtn = document.getElementById('settingsBtn');
+  origSettingsBtn?.addEventListener('click', () => {
+    const meta = getBackupMeta();
+    const daysInput = document.getElementById('settingsBackupDays');
+    if (daysInput) daysInput.value = meta.thresholdDays || 7;
+    updateBackupStatusBox();
   });
 
   // ---------- Init ----------
