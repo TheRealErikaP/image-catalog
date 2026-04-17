@@ -1017,6 +1017,42 @@
   </div>
 </div>
 
+<!-- Bulk AI fix modal -->
+<div class="modal-backdrop" id="bulkFixModal">
+  <div class="modal" style="max-width:640px;">
+    <h3 id="bulkFixTitle">⚡ AI fix all images</h3>
+    <p class="sub" id="bulkFixSub">This will run Claude Vision on every image in this client's catalog and overwrite the name, description, alt text, and tags.</p>
+
+    <div id="bulkFixIntro">
+      <div id="bulkFixCost" style="padding:14px 18px; background:rgba(212,168,67,0.1); border-left:3px solid var(--gold); border-radius:4px; font-size:13px; margin:16px 0;"></div>
+      <div style="padding:14px 18px; background:rgba(0,180,177,0.08); border-left:3px solid var(--teal); border-radius:4px; font-size:13px; margin-bottom:16px;">
+        <strong>Safety net:</strong> A full backup downloads automatically before this runs. If the results are wrong, restore it via Settings → Backup &amp; restore.
+      </div>
+      <div style="padding:14px 18px; background:rgba(201,64,128,0.08); border-left:3px solid var(--magenta); border-radius:4px; font-size:13px; margin-bottom:16px;">
+        <strong>Heads up:</strong> This overwrites existing names and descriptions. Anything you've hand-written will be replaced.
+      </div>
+    </div>
+
+    <div id="bulkFixProgress" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px;">
+        <span id="bulkFixProgressLabel">Preparing...</span>
+        <span id="bulkFixProgressCount" style="font-family:'JetBrains Mono',monospace;"></span>
+      </div>
+      <div style="height:8px; background:rgba(13,27,42,0.08); border-radius:4px; overflow:hidden;">
+        <div id="bulkFixProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg, var(--teal), var(--magenta)); transition:width 0.3s;"></div>
+      </div>
+      <div id="bulkFixCurrentItem" style="margin-top:10px; font-size:12px; color:rgba(13,27,42,0.6); font-family:'JetBrains Mono',monospace; min-height:18px;"></div>
+    </div>
+
+    <div id="bulkFixResult" style="display:none; margin-top:16px;"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="bulkFixCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="bulkFixStartBtn">⚡ Start (run it)</button>
+    </div>
+  </div>
+</div>
+
 <!-- Resource edit modal -->
 <div class="modal-backdrop" id="resourceModal">
   <div class="modal">
@@ -1250,6 +1286,7 @@
           </div>
         </div>
         <div class="header-actions">
+          <button class="btn btn-secondary" id="aiBulkFixBtn" style="background:linear-gradient(135deg, var(--teal) 0%, var(--magenta) 100%); color:white; border:none;">⚡ AI fix all</button>
           <button class="btn btn-secondary" id="exportBtn">Export for Claude</button>
           <button class="btn btn-danger" id="deleteClientBtn">Delete client</button>
         </div>
@@ -1503,10 +1540,21 @@
               <input type="text" id="ghAltInput">
             </div>
           </div>
-          <div class="add-actions">
-            <span class="add-hint" id="ghAddHint">Tip: paste the URL first, or click Push to GitHub to upload the file automatically.</span>
-            <button class="btn btn-secondary" id="ghPushBtn">⬆ Push to GitHub</button>
-            <button class="btn btn-primary" id="ghAddBtn">Add to catalog</button>
+          <div class="add-actions" style="flex-direction:column; align-items:stretch; gap:10px;">
+            <button class="btn btn-primary" id="ghAutoBtn" style="font-size:15px; padding:14px 20px; background:linear-gradient(135deg, var(--teal) 0%, var(--magenta) 100%); border:none;">
+              ⚡ Auto-process &amp; upload
+            </button>
+            <div style="font-size:12px; color:rgba(13,27,42,0.55); text-align:center;">
+              Drops the file in → Claude describes it → pushes to GitHub → adds to catalog. One click.
+            </div>
+            <details style="margin-top:6px;">
+              <summary style="cursor:pointer; font-size:12px; color:rgba(13,27,42,0.55); padding:4px 0;">Manual mode (advanced)</summary>
+              <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:10px; align-items:center; flex-wrap:wrap;">
+                <span class="add-hint" id="ghAddHint" style="flex:1; min-width:200px;">Use these if you want to describe, push, and catalog separately.</span>
+                <button class="btn btn-secondary" id="ghPushBtn">⬆ Push to GitHub</button>
+                <button class="btn btn-secondary" id="ghAddBtn">Add to catalog</button>
+              </div>
+            </details>
           </div>
           <div id="ghPushStatus" style="display:none; margin-top:10px; padding:10px 14px; border-radius:4px; font-size:13px;"></div>
         </div>
@@ -2009,6 +2057,161 @@
           status.innerHTML = `<strong>Upload failed.</strong> ${escapeHtml(err.message)}<br><span style="font-size:11px; color:rgba(13,27,42,0.7);">${hint}</span>`;
           btn.disabled = false;
           btn.textContent = orig;
+        }
+      });
+
+      // ============================================================
+      // AUTO-PROCESS & UPLOAD (one-click: describe → push → catalog)
+      // ============================================================
+      $('ghAutoBtn')?.addEventListener('click', async () => {
+        const btn = $('ghAutoBtn');
+        const status = $('ghPushStatus');
+        const preview = $('ghOutput').dataset.preview;
+        let filename = $('ghFilenameInput').value.trim();
+
+        if (!preview) { toast('Drop a file first.'); return; }
+        if (!settings.githubPat) {
+          toast('Add your GitHub PAT in Settings first.');
+          return;
+        }
+        if (!client.ghUser || !client.ghRepo) {
+          toast('This client needs a GitHub user and repo set (click "edit" next to the client name).');
+          return;
+        }
+
+        const origText = btn.innerHTML;
+        btn.disabled = true;
+        status.style.display = 'block';
+        status.style.background = 'rgba(0,180,177,0.08)';
+        status.style.borderLeft = '3px solid var(--teal)';
+
+        try {
+          // Parse base64 + mediaType from preview data URL
+          const mediaType = preview.substring(5, preview.indexOf(';'));
+          const base64 = preview.split(',')[1];
+
+          // Step 1: Describe (if API key available)
+          let aiName = '', aiDesc = '', aiAlt = '', aiTags = '';
+          if (settings.anthropicKey) {
+            btn.innerHTML = '<span class="spinner" style="display:inline-block;width:14px;height:14px;border:2px solid white;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></span> Describing...';
+            status.innerHTML = `<strong>Step 1/3:</strong> Asking Claude what's in the image...`;
+            try {
+              const result = await describeWithClaude(base64, mediaType);
+              aiDesc = result.description || '';
+              aiAlt = result.alt || '';
+              aiTags = result.tags || '';
+              // Derive a concise name from the description or alt — first 6 words cleaned up
+              const source = aiAlt || aiDesc;
+              aiName = source.split(/[.!?,]/)[0].split(' ').slice(0, 6).join(' ').trim();
+              aiName = aiName.replace(/^\w/, c => c.toUpperCase());
+            } catch (err) {
+              console.warn('Vision failed, using filename fallback:', err);
+              aiName = filenameFallback(filename);
+              status.innerHTML = `<strong>Step 1/3:</strong> Vision failed — using filename as fallback.`;
+            }
+          } else {
+            aiName = filenameFallback(filename);
+          }
+
+          // Regenerate filename from the AI-derived name for a cleaner slug
+          if (aiName) {
+            const cleanSlug = aiName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+            if (cleanSlug) {
+              filename = `${cleanSlug}.${ext(filename)}`;
+              $('ghFilenameInput').value = filename;
+              const url = `https://${client.ghUser}.github.io/${client.ghRepo}/${filename}`;
+              $('ghUrlPreview').value = url;
+            }
+          }
+
+          // Populate the form fields so user sees what's happening
+          if (aiName && !$('ghNameInput').value) $('ghNameInput').value = aiName;
+          if (aiDesc && !$('ghDescInput').value) $('ghDescInput').value = aiDesc;
+          if (aiAlt && !$('ghAltInput').value) $('ghAltInput').value = aiAlt;
+          if (aiTags && !$('ghTagsInput').value) $('ghTagsInput').value = aiTags;
+
+          // Step 2: Push to GitHub
+          btn.innerHTML = '<span class="spinner" style="display:inline-block;width:14px;height:14px;border:2px solid white;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></span> Uploading...';
+          status.innerHTML = `<strong>Step 2/3:</strong> Pushing <code>${escapeHtml(filename)}</code> to ${escapeHtml(client.ghUser)}/${escapeHtml(client.ghRepo)}...`;
+
+          let existingSha = null;
+          try {
+            const checkRes = await fetch(
+              `https://api.github.com/repos/${client.ghUser}/${client.ghRepo}/contents/${encodeURIComponent(filename)}`,
+              { headers: { 'Authorization': `token ${settings.githubPat}`, 'Accept': 'application/vnd.github.v3+json' } }
+            );
+            if (checkRes.ok) {
+              existingSha = (await checkRes.json()).sha;
+            }
+          } catch {}
+
+          const uploadBody = {
+            message: `Add image: ${filename}${settings.displayName ? ` (by ${settings.displayName})` : ''}`,
+            content: base64
+          };
+          if (existingSha) uploadBody.sha = existingSha;
+
+          const uploadRes = await fetch(
+            `https://api.github.com/repos/${client.ghUser}/${client.ghRepo}/contents/${encodeURIComponent(filename)}`,
+            { method: 'PUT', headers: { 'Authorization': `token ${settings.githubPat}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' }, body: JSON.stringify(uploadBody) }
+          );
+          if (!uploadRes.ok) {
+            const err = await uploadRes.json().catch(() => ({}));
+            const e = new Error(err.message || `GitHub returned ${uploadRes.status}`);
+            e.statusCode = uploadRes.status;
+            throw e;
+          }
+          const uploadResult = await uploadRes.json();
+
+          // Step 3: Add to catalog
+          btn.innerHTML = '<span class="spinner" style="display:inline-block;width:14px;height:14px;border:2px solid white;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;"></span> Cataloging...';
+          status.innerHTML = `<strong>Step 3/3:</strong> Adding to catalog...`;
+
+          const url = $('ghUrlPreview').value.trim();
+          const img = {
+            id: uid(),
+            url,
+            source: 'github',
+            filename,
+            name: $('ghNameInput').value.trim() || filename,
+            description: $('ghDescInput').value.trim(),
+            tags: $('ghTagsInput').value.trim(),
+            pages: $('ghPagesInput').value.trim(),
+            alt: $('ghAltInput').value.trim(),
+            added: new Date().toISOString()
+          };
+          if (settings.displayName) img.addedBy = settings.displayName;
+          client.images = client.images || [];
+          client.images.unshift(img);
+          saveState();
+
+          status.style.background = 'rgba(0,180,177,0.12)';
+          status.innerHTML = `<strong>✓ Done.</strong> Described, uploaded, and cataloged. <a href="${uploadResult.content.html_url}" target="_blank" style="color:var(--teal);">View on GitHub →</a>`;
+          btn.innerHTML = '✓ Complete';
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = origText;
+            renderSidebar();
+            renderMain();
+          }, 1500);
+
+        } catch (err) {
+          console.error(err);
+          status.style.background = 'rgba(201,64,128,0.08)';
+          status.style.borderLeft = '3px solid var(--magenta)';
+          let hint;
+          if (err.statusCode === 401) {
+            hint = 'Your GitHub token is expired or invalid. <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--magenta); font-weight:600;">Generate a new one</a> and paste it into Settings.';
+          } else if (err.statusCode === 403) {
+            hint = 'Your token doesn\'t have permission for this repo. It needs <code>repo</code> scope.';
+          } else if (err.statusCode === 404) {
+            hint = `Can't find <code>${escapeHtml(client.ghUser)}/${escapeHtml(client.ghRepo)}</code>. Check the repo name and that it exists.`;
+          } else {
+            hint = 'Nothing was saved. Try again or use Manual mode below.';
+          }
+          status.innerHTML = `<strong>Auto-process failed.</strong> ${escapeHtml(err.message)}<br><span style="font-size:11px; color:rgba(13,27,42,0.7);">${hint}</span>`;
+          btn.disabled = false;
+          btn.innerHTML = origText;
         }
       });
 
@@ -3441,6 +3644,184 @@
     const temp = { ...settings, githubPatExpiry: document.getElementById('settingsGithubPatExpiry').value };
     renderPatExpiryStatusInto(temp);
   });
+
+  // ============================================================
+  // BULK AI FIX — overwrites all images in active client with Vision-generated metadata
+  // ============================================================
+
+  let bulkFixCancelled = false;
+  let bulkFixSnapshot = null; // pre-run state for undo
+
+  function attachBulkFixButton() {
+    const btn = document.getElementById('aiBulkFixBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => openBulkFixModal());
+  }
+
+  function openBulkFixModal() {
+    if (!activeClientId) return;
+    const client = getClient(activeClientId);
+    const total = (client.images || []).length;
+
+    if (total === 0) {
+      toast('No images to fix.');
+      return;
+    }
+    if (!settings.anthropicKey) {
+      toast('Add your Anthropic API key in Settings first.');
+      return;
+    }
+
+    // Reset modal state
+    document.getElementById('bulkFixTitle').textContent = `⚡ AI fix all images · ${client.name}`;
+    document.getElementById('bulkFixIntro').style.display = 'block';
+    document.getElementById('bulkFixProgress').style.display = 'none';
+    document.getElementById('bulkFixResult').style.display = 'none';
+    document.getElementById('bulkFixResult').innerHTML = '';
+
+    const estimatedCost = (total * 0.015).toFixed(2);
+    document.getElementById('bulkFixCost').innerHTML = `
+      <strong>${total} image${total === 1 ? '' : 's'} in ${escapeHtml(client.name)}'s catalog.</strong>
+      Estimated API cost: ~$${estimatedCost} (roughly 1.5¢ per image).
+      Takes about ${Math.ceil(total * 3 / 60)} minute${Math.ceil(total * 3 / 60) === 1 ? '' : 's'} at 1 image every ~3 seconds.
+    `;
+
+    const startBtn = document.getElementById('bulkFixStartBtn');
+    startBtn.textContent = '⚡ Start (run it)';
+    startBtn.disabled = false;
+    bulkFixCancelled = false;
+
+    document.getElementById('bulkFixModal').classList.add('show');
+  }
+
+  document.getElementById('bulkFixCancelBtn').addEventListener('click', () => {
+    bulkFixCancelled = true;
+    document.getElementById('bulkFixModal').classList.remove('show');
+  });
+
+  document.getElementById('bulkFixStartBtn').addEventListener('click', async () => {
+    const startBtn = document.getElementById('bulkFixStartBtn');
+
+    // Allow "cancel running" mid-flight
+    if (startBtn.dataset.mode === 'cancel') {
+      bulkFixCancelled = true;
+      startBtn.disabled = true;
+      startBtn.textContent = 'Stopping...';
+      return;
+    }
+
+    const client = getClient(activeClientId);
+    if (!client || !(client.images || []).length) return;
+
+    // 1. Auto-backup before running
+    bulkFixSnapshot = JSON.parse(JSON.stringify(client.images));
+    try {
+      downloadBackup(); // triggers download silently, updates backup meta
+    } catch {}
+
+    // 2. Switch UI to progress mode
+    document.getElementById('bulkFixIntro').style.display = 'none';
+    document.getElementById('bulkFixProgress').style.display = 'block';
+    startBtn.dataset.mode = 'cancel';
+    startBtn.textContent = '⏹ Stop';
+    document.getElementById('bulkFixCancelBtn').style.display = 'none';
+
+    // 3. Loop through images
+    const total = client.images.length;
+    const results = { success: 0, failed: 0, cancelled: 0 };
+    const DELAY_MS = 500; // brief pause between calls to avoid throttling
+
+    for (let i = 0; i < total; i++) {
+      if (bulkFixCancelled) {
+        results.cancelled = total - i;
+        break;
+      }
+      const img = client.images[i];
+      const progressBar = document.getElementById('bulkFixProgressBar');
+      const progressCount = document.getElementById('bulkFixProgressCount');
+      const progressLabel = document.getElementById('bulkFixProgressLabel');
+      const currentItem = document.getElementById('bulkFixCurrentItem');
+
+      progressBar.style.width = `${(i / total) * 100}%`;
+      progressCount.textContent = `${i + 1} / ${total}`;
+      progressLabel.textContent = `Processing ${i + 1} of ${total}...`;
+      currentItem.textContent = img.name?.slice(0, 60) || img.url.slice(-60);
+
+      try {
+        const { base64, mediaType } = await fetchImageAsBase64(img.url);
+        const result = await describeWithClaude(base64, mediaType);
+
+        // Overwrite fields
+        if (result.description) img.description = result.description;
+        if (result.alt) img.alt = result.alt;
+        if (result.tags) img.tags = result.tags;
+
+        // Derive name from description/alt (first 6 words)
+        const source = result.alt || result.description || '';
+        if (source) {
+          let newName = source.split(/[.!?,]/)[0].split(' ').slice(0, 6).join(' ').trim();
+          newName = newName.replace(/^\w/, c => c.toUpperCase());
+          if (newName) img.name = newName;
+        }
+
+        img.updated = new Date().toISOString();
+        if (settings.displayName) img.updatedBy = settings.displayName;
+        results.success++;
+      } catch (err) {
+        console.warn('Bulk fix: failed image', img.url, err);
+        results.failed++;
+      }
+
+      // Save progressively so partial runs are preserved
+      saveState();
+
+      // Rate limit
+      if (i < total - 1) {
+        await new Promise(r => setTimeout(r, DELAY_MS));
+      }
+    }
+
+    // 4. Final state
+    document.getElementById('bulkFixProgressBar').style.width = '100%';
+    document.getElementById('bulkFixProgressCount').textContent = `${total} / ${total}`;
+    document.getElementById('bulkFixProgressLabel').textContent = bulkFixCancelled ? 'Stopped.' : 'Done.';
+    document.getElementById('bulkFixCurrentItem').textContent = '';
+
+    const resultEl = document.getElementById('bulkFixResult');
+    resultEl.style.display = 'block';
+    resultEl.innerHTML = `
+      <div style="padding:14px 18px; background:${results.failed ? 'rgba(212,168,67,0.1)' : 'rgba(0,180,177,0.1)'}; border-left:3px solid ${results.failed ? 'var(--gold)' : 'var(--teal)'}; border-radius:4px; font-size:13px;">
+        <strong>✓ ${results.success} image${results.success === 1 ? '' : 's'} updated.</strong>
+        ${results.failed ? `<br><span style="color:#8c6f10;">${results.failed} failed</span> (usually CORS — some Wix images block direct access; hand-edit these).` : ''}
+        ${results.cancelled ? `<br><span style="color:rgba(13,27,42,0.6);">${results.cancelled} not processed (you stopped the run).</span>` : ''}
+      </div>
+      <div style="margin-top:12px; font-size:12px; color:rgba(13,27,42,0.65);">
+        Don't like the results? You can restore the backup file that was downloaded before this ran.
+      </div>
+    `;
+
+    startBtn.dataset.mode = '';
+    startBtn.textContent = 'Close';
+    startBtn.disabled = false;
+    document.getElementById('bulkFixCancelBtn').style.display = '';
+    document.getElementById('bulkFixCancelBtn').textContent = 'Close';
+
+    // Next click just closes
+    const closeHandler = () => {
+      document.getElementById('bulkFixModal').classList.remove('show');
+      renderSidebar();
+      renderMain();
+      startBtn.removeEventListener('click', closeHandler);
+    };
+    startBtn.addEventListener('click', closeHandler, { once: true });
+  });
+
+  // Hook attachment into main-render cycle
+  const origAttachMainEvents = attachMainEvents;
+  attachMainEvents = function() {
+    origAttachMainEvents.apply(this, arguments);
+    attachBulkFixButton();
+  };
 
   // ---------- Init ----------
   renderSidebar();
