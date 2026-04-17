@@ -268,6 +268,10 @@
   .image-card .tags .tag.used {
     background: rgba(212,168,67,0.15); color: #b08a2b;
   }
+  .image-card .attribution {
+    font-size: 10px; color: rgba(13,27,42,0.45); font-style: italic;
+    margin-top: 6px; letter-spacing: 0.02em;
+  }
 
   .image-card .actions {
     display: flex; gap: 0; border-top: 1px solid var(--line);
@@ -291,6 +295,83 @@
     font-family: 'Hurricane', cursive; font-size: 44px; color: var(--magenta);
     margin-bottom: 6px; line-height: 1;
   }
+
+  /* View toggle (Images / Resources) */
+  .view-toggle {
+    display: flex; gap: 4px; margin-bottom: 20px; padding: 4px;
+    background: rgba(13,27,42,0.06); border-radius: 6px; width: fit-content;
+  }
+  .view-tab {
+    background: transparent; border: none; padding: 8px 16px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+    color: rgba(13,27,42,0.6); cursor: pointer; border-radius: 4px;
+    transition: all 0.15s; display: flex; align-items: center; gap: 8px;
+  }
+  .view-tab:hover { color: var(--navy); }
+  .view-tab.active {
+    background: white; color: var(--navy);
+    box-shadow: 0 1px 3px rgba(13,27,42,0.1);
+  }
+  .view-tab .count {
+    background: rgba(13,27,42,0.08); color: rgba(13,27,42,0.6);
+    padding: 1px 8px; border-radius: 10px; font-size: 11px;
+    font-weight: 600; min-width: 20px; text-align: center;
+  }
+  .view-tab.active .count { background: var(--teal); color: white; }
+
+  /* Resource cards */
+  .resource-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px;
+  }
+  .resource-card {
+    background: white; border: 1px solid var(--line); border-radius: 8px;
+    padding: 16px; display: flex; flex-direction: column; gap: 8px;
+    transition: all 0.15s; box-shadow: var(--shadow);
+    border-left: 3px solid var(--teal);
+  }
+  .resource-card:hover { border-color: var(--teal); border-left-color: var(--magenta); transform: translateY(-2px); }
+  .resource-card .resource-type {
+    font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--magenta);
+  }
+  .resource-card .resource-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    letter-spacing: 0.02em; color: var(--navy); line-height: 1.1;
+  }
+  .resource-card .resource-desc {
+    font-size: 13px; color: rgba(13,27,42,0.7); line-height: 1.5;
+  }
+  .resource-card .resource-url {
+    font-size: 11px; word-break: break-all; padding: 6px 10px;
+    background: var(--paper); border-radius: 4px; color: rgba(13,27,42,0.55);
+  }
+  .resource-card .resource-url a { color: var(--teal); text-decoration: none; }
+  .resource-card .resource-url a:hover { text-decoration: underline; }
+  .resource-card .tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  .resource-card .tags .tag {
+    font-size: 10px; padding: 2px 7px; background: rgba(0,180,177,0.1);
+    color: var(--teal); border-radius: 9px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .resource-card .tags .tag.used {
+    background: rgba(212,168,67,0.15); color: #b08a2b;
+  }
+  .resource-card .attribution {
+    font-size: 10px; color: rgba(13,27,42,0.45); font-style: italic;
+    letter-spacing: 0.02em;
+  }
+  .resource-card .actions {
+    display: flex; gap: 0; border-top: 1px solid var(--line);
+    margin: 4px -16px -16px; padding-top: 0;
+  }
+  .resource-card .actions button {
+    flex: 1; background: transparent; border: none; padding: 8px;
+    font-size: 11px; color: rgba(13,27,42,0.6); cursor: pointer;
+    transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+    font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .resource-card .actions button + button { border-left: 1px solid var(--line); }
+  .resource-card .actions button:hover { background: var(--paper); color: var(--navy); }
 
   /* Modal */
   .modal-backdrop {
@@ -560,6 +641,8 @@
       <a href="#h-setup">Setting up a client</a>
       <a href="#h-wix">Adding Wix images</a>
       <a href="#h-github">Adding GitHub images</a>
+      <a href="#h-push">Push to GitHub</a>
+      <a href="#h-resources">Resources tab</a>
       <a href="#h-bulk">Bulk import</a>
       <a href="#h-ai">AI descriptions</a>
       <a href="#h-dup">Duplicates</a>
@@ -662,7 +745,33 @@
         <strong>Markdown vs JSON:</strong> Use Markdown by default. It's readable by both humans and Claude, and it'll render properly when you view it on GitHub. JSON is there only if you want to pipe the catalog into other automation later.
       </div>
 
-      <h4 id="h-bulk"><span class="step-num">6</span> Bulk import — paste a whole list at once</h4>
+      <h4 id="h-push"><span class="step-num">6</span> Push to GitHub — upload files directly from here</h4>
+      <p>You don't have to upload image files to GitHub separately anymore. If you've set a GitHub Personal Access Token in Settings, the <code>+ Add new GitHub image</code> tab has a <code>⬆ Push to GitHub</code> button that uploads the file for you.</p>
+      <ol>
+        <li>One-time: Go to <code>github.com</code> → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new (classic). Check the <code>repo</code> scope. Copy the token.</li>
+        <li>In this tool, click <code>Settings &amp; AI keys</code> in the sidebar, paste the token into the GitHub PAT field, Save.</li>
+        <li>Pick a client that has a GitHub user + repo configured (click <code>edit</code> next to the client name if not).</li>
+        <li>Go to <code>+ Add new GitHub image</code>, drop a file, fill in the metadata, click <code>⬆ Push to GitHub</code>.</li>
+        <li>The file uploads to the client's repo. If a file with that name already exists, it replaces it (useful for updating flyers). Then click <code>Add to catalog</code>.</li>
+      </ol>
+      <div class="tip-box">
+        <strong>Security note:</strong> Your PAT is stored in this browser's localStorage only. One token is used across all clients. If your browser gets compromised, revoke the token at GitHub — everything stops working cleanly with no lingering access.
+      </div>
+
+      <h4 id="h-resources"><span class="step-num">7</span> Resources tab — catalog non-image URLs</h4>
+      <p>Not everything you track for a client is an image. The <code>Resources &amp; links</code> tab (toggle at the top of each client workspace) is for everything else: Calendly links, Google Forms, Drive folders, tracking pixels, dashboards, payment links, social profiles, landing pages, analytics, whatever.</p>
+      <ol>
+        <li>Switch to <code>Resources &amp; links</code> view at the top of the client workspace.</li>
+        <li>Paste a URL. The type auto-detects (Google Form, Calendly, Stripe, etc.) but you can override.</li>
+        <li>Add a name, description, what pages it's used on, and tags — same fields as images.</li>
+        <li>Use <code>+ Bulk import</code> to dump a whole list at once — one URL per line, optional <code>|</code> name separator.</li>
+      </ol>
+      <p>Resources show up in the Claude export too, grouped by type, so when you start a new Claude chat you can say "what's this client's Calendly link?" and Claude will know.</p>
+      <div class="tip-box">
+        <strong>Use case examples:</strong> Tracking every Google Form a client uses for lead capture. Keeping Calendly links for different team members. Logging which Drive folders clients gave you access to. Storing Stripe payment links for different services. Knowing which landing page URL goes with which campaign.
+      </div>
+
+      <h4 id="h-bulk"><span class="step-num">8</span> Bulk import — paste a whole list at once</h4>
       <p>If you already have a list of image URLs (from a spreadsheet, a doc, an old export, whatever), use the <code>+ Bulk import links</code> tab instead of adding one at a time.</p>
       <ol>
         <li>Click <code>+ Bulk import links</code> tab in any client's add-image area.</li>
@@ -678,7 +787,7 @@
         <li>Click <code>Add all to catalog</code>. Duplicates get replaced, new ones get added.</li>
       </ol>
 
-      <h4 id="h-ai"><span class="step-num">7</span> AI descriptions (optional)</h4>
+      <h4 id="h-ai"><span class="step-num">9</span> AI descriptions (optional)</h4>
       <p>If you drop an Anthropic API key in <code>Settings</code>, every add form gets an <code>✨ Describe with AI</code> button. Claude reads the image and writes the description, alt text, and tags for you.</p>
       <ul>
         <li><strong>No key set?</strong> Buttons still work — they fall back to a cleaned-up version of the filename.</li>
@@ -687,7 +796,7 @@
         <li><strong>Cost:</strong> Roughly 1-2¢ per image. A full bulk import of 100 images is about $1-2. You'll get a confirmation prompt before any bulk run.</li>
       </ul>
 
-      <h4 id="h-dup"><span class="step-num">8</span> Duplicate detection</h4>
+      <h4 id="h-dup"><span class="step-num">10</span> Duplicate detection</h4>
       <p>Every time you add an image, the tool checks if you already have it. Three checks happen:</p>
       <ol>
         <li><strong>Exact URL match</strong> — instant, free.</li>
@@ -705,7 +814,7 @@
         <strong>The honest limit:</strong> This catches byte-identical files, same URLs, and same filenames. It can't catch "same photo but a different JPG compression" or "same flyer resaved" unless you run <code>Compare with Claude</code> manually.
       </div>
 
-      <h4 id="h-tips"><span class="step-num">9</span> Tips, gotchas, and habits</h4>
+      <h4 id="h-tips"><span class="step-num">11</span> Tips, gotchas, and habits</h4>
       <ul>
         <li><strong>Write descriptions for Claude, not for yourself.</strong> "Hero image" means nothing to Claude. "Wide-angle photo of a commercial metal fire door with push bar, natural light, used as hero on the homepage" means everything.</li>
         <li><strong>Update the "used on" field.</strong> This is how you avoid putting the same hero image on three different pages.</li>
@@ -714,7 +823,7 @@
         <li><strong>Broken thumbnails aren't broken entries.</strong> If a Wix URL's preview fails (some are CDN-restricted), the URL is still saved correctly. Test the URL in a new browser tab to confirm.</li>
       </ul>
 
-      <h4 id="h-handoff"><span class="step-num">10</span> Handing this off to a VA or teammate</h4>
+      <h4 id="h-handoff"><span class="step-num">12</span> Handing this off to a VA or teammate</h4>
       <p>If someone else is going to maintain the catalog:</p>
       <ol>
         <li>Send them the HTML file. They save it somewhere and open it in a browser (Chrome, Edge, Firefox, Safari — any modern browser works).</li>
@@ -743,6 +852,12 @@
       <label>Anthropic API Key <span style="font-weight:400; color:rgba(13,27,42,0.5);">— for AI descriptions &amp; duplicate comparison</span></label>
       <input type="password" id="settingsAnthropicKey" class="mono" placeholder="sk-ant-...">
       <p style="font-size:12px; color:rgba(13,27,42,0.55); margin-top:4px;">Get one at console.anthropic.com → API keys. Roughly 1-2¢ per image described.</p>
+    </div>
+
+    <div class="form-row">
+      <label>GitHub Personal Access Token <span style="font-weight:400; color:rgba(13,27,42,0.5);">— for push-to-repo uploads</span></label>
+      <input type="password" id="settingsGithubPat" class="mono" placeholder="ghp_...">
+      <p style="font-size:12px; color:rgba(13,27,42,0.55); margin-top:4px;">github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → needs <code>repo</code> scope. Used for all clients' repos.</p>
     </div>
 
     <div class="form-row">
@@ -797,6 +912,45 @@
   </div>
 </div>
 
+<!-- Resource edit modal -->
+<div class="modal-backdrop" id="resourceModal">
+  <div class="modal">
+    <h3>Edit resource</h3>
+    <div class="form-row">
+      <label>URL</label>
+      <input type="text" id="resourceEditUrl" class="mono">
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Name / label</label>
+        <input type="text" id="resourceEditName">
+      </div>
+      <div class="form-row">
+        <label>Type</label>
+        <select id="resourceEditType" style="width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:4px; font-family:inherit; font-size:14px; background:white;"></select>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Description</label>
+      <textarea id="resourceEditDesc" rows="2"></textarea>
+    </div>
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Used on pages</label>
+        <input type="text" id="resourceEditPages">
+      </div>
+      <div class="form-row">
+        <label>Tags</label>
+        <input type="text" id="resourceEditTags">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="resourceEditCancel">Cancel</button>
+      <button class="btn btn-primary" id="resourceEditSave">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Duplicate detection modal -->
 <div class="modal-backdrop" id="dupModal">
   <div class="modal">
@@ -832,10 +986,65 @@
   const LS_KEY = 'visible_catalog_v1';
   let state = loadState();
   let activeClientId = state.activeClientId || (state.clients[0]?.id ?? null);
-  let addMode = 'wix'; // 'wix' or 'github'
+  let addMode = 'wix'; // 'wix' or 'github' or 'bulk'
   let editingImageId = null;
+  let editingResourceId = null;
   let searchQuery = '';
   let activeFilter = 'all';
+  let viewMode = 'images'; // 'images' or 'resources'
+  let resourceAddMode = 'single'; // 'single' or 'bulk'
+
+  const RESOURCE_TYPES = [
+    'google-form', 'google-doc', 'google-sheet', 'google-drive', 'google-calendar',
+    'calendly', 'typeform', 'airtable', 'notion',
+    'social-profile', 'youtube', 'podcast',
+    'tracking-pixel', 'analytics', 'dashboard',
+    'stripe', 'payment-link',
+    'landing-page', 'signup-form', 'lead-magnet',
+    'other'
+  ];
+  const RESOURCE_TYPE_LABELS = {
+    'google-form': 'Google Form',
+    'google-doc': 'Google Doc',
+    'google-sheet': 'Google Sheet',
+    'google-drive': 'Google Drive folder',
+    'google-calendar': 'Google Calendar',
+    'calendly': 'Calendly link',
+    'typeform': 'Typeform',
+    'airtable': 'Airtable',
+    'notion': 'Notion page',
+    'social-profile': 'Social profile',
+    'youtube': 'YouTube',
+    'podcast': 'Podcast',
+    'tracking-pixel': 'Tracking pixel',
+    'analytics': 'Analytics dashboard',
+    'dashboard': 'Dashboard',
+    'stripe': 'Stripe link',
+    'payment-link': 'Payment link',
+    'landing-page': 'Landing page',
+    'signup-form': 'Signup form',
+    'lead-magnet': 'Lead magnet',
+    'other': 'Other'
+  };
+
+  function detectResourceType(url) {
+    if (!url) return 'other';
+    const u = url.toLowerCase();
+    if (u.includes('docs.google.com/forms')) return 'google-form';
+    if (u.includes('docs.google.com/document')) return 'google-doc';
+    if (u.includes('docs.google.com/spreadsheet')) return 'google-sheet';
+    if (u.includes('drive.google.com')) return 'google-drive';
+    if (u.includes('calendar.google.com') || u.includes('calendar.app.google')) return 'google-calendar';
+    if (u.includes('calendly.com')) return 'calendly';
+    if (u.includes('typeform.com')) return 'typeform';
+    if (u.includes('airtable.com')) return 'airtable';
+    if (u.includes('notion.so') || u.includes('notion.site')) return 'notion';
+    if (u.includes('youtube.com') || u.includes('youtu.be')) return 'youtube';
+    if (u.includes('instagram.com') || u.includes('tiktok.com') || u.includes('linkedin.com') || u.includes('facebook.com') || u.includes('x.com') || u.includes('twitter.com')) return 'social-profile';
+    if (u.includes('stripe.com') || u.includes('buy.stripe.com')) return 'stripe';
+    if (u.includes('analytics.google.com') || u.includes('ga.dev')) return 'analytics';
+    return 'other';
+  }
 
   function loadState() {
     try {
@@ -921,15 +1130,16 @@
 
     const client = getClient(activeClientId);
     const imgs = client.images || [];
+    const resources = client.resources || [];
 
-    main.innerHTML = `
+    const header = `
       <div class="client-header">
         <div>
           <h2>${escapeHtml(client.name)}<span class="edit" id="editClient">edit</span></h2>
           <div class="client-meta">
             ${client.wixUrl ? `<span>${escapeHtml(client.wixUrl)}</span> · ` : ''}
             ${client.ghUser && client.ghRepo ? `<span>${escapeHtml(client.ghUser)}/${escapeHtml(client.ghRepo)}</span> · ` : ''}
-            <span>${imgs.length} image${imgs.length === 1 ? '' : 's'}</span>
+            <span>${imgs.length} image${imgs.length === 1 ? '' : 's'}</span> · <span>${resources.length} resource${resources.length === 1 ? '' : 's'}</span>
           </div>
         </div>
         <div class="header-actions">
@@ -938,28 +1148,155 @@
         </div>
       </div>
 
-      <div class="add-tabs">
-        <button class="add-tab ${addMode === 'wix' ? 'active' : ''}" data-mode="wix">+ Add existing Wix image</button>
-        <button class="add-tab ${addMode === 'github' ? 'active' : ''}" data-mode="github">+ Add new GitHub image</button>
-        <button class="add-tab" id="openBulkTabBtn" data-mode="bulk">+ Bulk import links</button>
+      <div class="view-toggle">
+        <button class="view-tab ${viewMode === 'images' ? 'active' : ''}" data-view="images">Images <span class="count">${imgs.length}</span></button>
+        <button class="view-tab ${viewMode === 'resources' ? 'active' : ''}" data-view="resources">Resources &amp; links <span class="count">${resources.length}</span></button>
       </div>
-
-      <section class="card with-tabs" id="addCard">${renderAddForm(client)}</section>
-
-      <div class="image-list-header">
-        <input type="text" class="search-input" id="searchInput" placeholder="Search by name, description, tag, or page..." value="${escapeHtml(searchQuery)}">
-        <div class="filter-chips">
-          <button class="chip ${activeFilter === 'all' ? 'active' : ''}" data-filter="all">All</button>
-          <button class="chip ${activeFilter === 'wix' ? 'active' : ''}" data-filter="wix">Wix</button>
-          <button class="chip ${activeFilter === 'github' ? 'active' : ''}" data-filter="github">GitHub</button>
-          <button class="chip ${activeFilter === 'other' ? 'active' : ''}" data-filter="other">Other</button>
-        </div>
-      </div>
-
-      ${renderImageList(imgs)}
     `;
 
+    if (viewMode === 'resources') {
+      main.innerHTML = header + `
+        <div class="add-tabs">
+          <button class="add-tab ${resourceAddMode === 'single' ? 'active' : ''}" data-resource-mode="single">+ Add resource</button>
+          <button class="add-tab ${resourceAddMode === 'bulk' ? 'active' : ''}" data-resource-mode="bulk">+ Bulk import</button>
+        </div>
+
+        <section class="card with-tabs" id="addCard">${renderResourceAddForm(client)}</section>
+
+        <div class="image-list-header">
+          <input type="text" class="search-input" id="searchInput" placeholder="Search by name, description, URL, or tag..." value="${escapeHtml(searchQuery)}">
+          <div class="filter-chips" id="resourceFilters">
+            <button class="chip ${activeFilter === 'all' ? 'active' : ''}" data-filter="all">All types</button>
+            ${Array.from(new Set(resources.map(r => r.type || 'other'))).map(t => `
+              <button class="chip ${activeFilter === t ? 'active' : ''}" data-filter="${escapeHtml(t)}">${escapeHtml(RESOURCE_TYPE_LABELS[t] || t)}</button>
+            `).join('')}
+          </div>
+        </div>
+
+        ${renderResourceList(resources)}
+      `;
+    } else {
+      main.innerHTML = header + `
+        <div class="add-tabs">
+          <button class="add-tab ${addMode === 'wix' ? 'active' : ''}" data-mode="wix">+ Add existing Wix image</button>
+          <button class="add-tab ${addMode === 'github' ? 'active' : ''}" data-mode="github">+ Add new GitHub image</button>
+          <button class="add-tab" id="openBulkTabBtn" data-mode="bulk">+ Bulk import links</button>
+        </div>
+
+        <section class="card with-tabs" id="addCard">${renderAddForm(client)}</section>
+
+        <div class="image-list-header">
+          <input type="text" class="search-input" id="searchInput" placeholder="Search by name, description, tag, or page..." value="${escapeHtml(searchQuery)}">
+          <div class="filter-chips">
+            <button class="chip ${activeFilter === 'all' ? 'active' : ''}" data-filter="all">All</button>
+            <button class="chip ${activeFilter === 'wix' ? 'active' : ''}" data-filter="wix">Wix</button>
+            <button class="chip ${activeFilter === 'github' ? 'active' : ''}" data-filter="github">GitHub</button>
+            <button class="chip ${activeFilter === 'other' ? 'active' : ''}" data-filter="other">Other</button>
+          </div>
+        </div>
+
+        ${renderImageList(imgs)}
+      `;
+    }
+
     attachMainEvents();
+  }
+
+  function renderResourceAddForm(client) {
+    if (resourceAddMode === 'bulk') {
+      return `
+        <h3>Bulk import resources</h3>
+        <p class="sub">Paste one URL per line. Optionally add a name with <code style="font-family:JetBrains Mono,monospace; background:rgba(13,27,42,0.06); padding:1px 5px; border-radius:3px">|</code>. Type is auto-detected.</p>
+        <div style="background:rgba(13,27,42,0.04); padding:12px 16px; border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.6; margin-bottom:14px; color:rgba(13,27,42,0.75);">
+          https://calendly.com/erikap/30min | Discovery call booking<br>
+          https://docs.google.com/forms/d/e/.../viewform | Intake form<br>
+          https://drive.google.com/drive/folders/...
+        </div>
+        <div class="form-row">
+          <label>URLs</label>
+          <textarea id="resourceBulkInput" rows="6" placeholder="Paste URLs, one per line..."></textarea>
+        </div>
+        <div class="add-actions">
+          <span class="add-hint">Type is auto-detected from the URL. You can edit each resource after adding.</span>
+          <button class="btn btn-primary" id="resourceBulkBtn">Add all</button>
+        </div>
+      `;
+    }
+    return `
+      <h3>Add a resource or link</h3>
+      <p class="sub">Catalog any non-image URL: Google Forms, Calendly, Drive folders, tracking pixels, dashboards, payment links, social profiles — anything you want to keep track of for this client.</p>
+      <div class="form-row">
+        <label>URL</label>
+        <input type="text" id="resourceUrlInput" class="mono" placeholder="https://calendly.com/erikap/30min">
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Name / label</label>
+          <input type="text" id="resourceNameInput" placeholder="Discovery call booking link">
+        </div>
+        <div class="form-row">
+          <label>Type</label>
+          <select id="resourceTypeInput" style="width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:4px; font-family:inherit; font-size:14px; background:white;">
+            ${RESOURCE_TYPES.map(t => `<option value="${t}">${RESOURCE_TYPE_LABELS[t]}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Description (what it's for, where it's used)</label>
+        <textarea id="resourceDescInput" rows="2" placeholder="Main booking link for discovery calls, embedded on services page"></textarea>
+      </div>
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Used on pages</label>
+          <input type="text" id="resourcePagesInput" placeholder="services, contact">
+        </div>
+        <div class="form-row">
+          <label>Tags (comma-separated)</label>
+          <input type="text" id="resourceTagsInput" placeholder="booking, lead-gen">
+        </div>
+      </div>
+      <div class="add-actions">
+        <span class="add-hint">Type will auto-detect when you paste the URL. You can override it.</span>
+        <button class="btn btn-primary" id="resourceAddBtn">Add to catalog</button>
+      </div>
+    `;
+  }
+
+  function renderResourceList(resources) {
+    const q = searchQuery.toLowerCase();
+    let filtered = resources.filter(r => {
+      if (activeFilter !== 'all' && (r.type || 'other') !== activeFilter) return false;
+      if (!q) return true;
+      const hay = [r.name, r.description, r.url, r.tags, r.pages, r.type].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+
+    if (filtered.length === 0) {
+      return `
+        <div class="empty-state">
+          <div class="big" style="color:var(--magenta);">no resources ${searchQuery || activeFilter !== 'all' ? 'match' : 'yet'}</div>
+          <div style="max-width:460px; margin:0 auto;">${searchQuery || activeFilter !== 'all' ? 'Try a different search or filter.' : 'Paste any URL above — Calendly, Google Forms, tracking pixels, dashboards, whatever you want to keep for this client.'}</div>
+        </div>`;
+    }
+
+    return `<div class="resource-grid">${filtered.map(r => `
+      <div class="resource-card" data-id="${r.id}">
+        <div class="resource-type">${escapeHtml(RESOURCE_TYPE_LABELS[r.type] || r.type || 'Other')}</div>
+        <div class="resource-name">${escapeHtml(r.name || '(unnamed)')}</div>
+        ${r.description ? `<div class="resource-desc">${escapeHtml(r.description)}</div>` : ''}
+        <div class="resource-url mono"><a href="${escapeHtml(r.url)}" target="_blank" rel="noopener">${escapeHtml(r.url.length > 70 ? r.url.slice(0, 70) + '…' : r.url)}</a></div>
+        <div class="tags">
+          ${(r.tags || '').split(',').filter(Boolean).map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join('')}
+          ${(r.pages || '').split(',').filter(Boolean).map(p => `<span class="tag used">on: ${escapeHtml(p.trim())}</span>`).join('')}
+        </div>
+        ${renderAttribution(r)}
+        <div class="actions">
+          <button data-action="resource-copy-url" data-id="${r.id}">Copy URL</button>
+          <button data-action="resource-edit" data-id="${r.id}">Edit</button>
+          <button data-action="resource-delete" data-id="${r.id}">Delete</button>
+        </div>
+      </div>
+    `).join('')}</div>`;
   }
 
   function renderAddForm(client) {
@@ -1060,9 +1397,11 @@
             </div>
           </div>
           <div class="add-actions">
-            <span class="add-hint">Commit the file to GitHub under this exact filename, then click add.</span>
+            <span class="add-hint" id="ghAddHint">Tip: paste the URL first, or click Push to GitHub to upload the file automatically.</span>
+            <button class="btn btn-secondary" id="ghPushBtn">⬆ Push to GitHub</button>
             <button class="btn btn-primary" id="ghAddBtn">Add to catalog</button>
           </div>
+          <div id="ghPushStatus" style="display:none; margin-top:10px; padding:10px 14px; border-radius:4px; font-size:13px;"></div>
         </div>
         ` : ''}
       `;
@@ -1105,6 +1444,7 @@
             ${(img.tags || '').split(',').filter(Boolean).map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join('')}
             ${(img.pages || '').split(',').filter(Boolean).map(p => `<span class="tag used">on: ${escapeHtml(p.trim())}</span>`).join('')}
           </div>
+          ${renderAttribution(img)}
         </div>
         <div class="actions">
           <button data-action="copy-url" data-id="${img.id}">Copy URL</button>
@@ -1115,10 +1455,45 @@
     `).join('')}</div>`;
   }
 
+  function renderAttribution(img) {
+    const parts = [];
+    if (img.updatedBy && img.updated) {
+      parts.push(`updated by ${escapeHtml(img.updatedBy)} · ${relativeDate(img.updated)}`);
+    } else if (img.addedBy && img.added) {
+      parts.push(`added by ${escapeHtml(img.addedBy)} · ${relativeDate(img.added)}`);
+    } else if (img.added) {
+      parts.push(`added ${relativeDate(img.added)}`);
+    }
+    if (!parts.length) return '';
+    return `<div class="attribution">${parts.join('')}</div>`;
+  }
+
+  function relativeDate(iso) {
+    try {
+      const then = new Date(iso);
+      const now = new Date();
+      const diff = (now - then) / 1000;
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      if (diff < 86400 * 7) return Math.floor(diff / 86400) + 'd ago';
+      return then.toLocaleDateString();
+    } catch { return ''; }
+  }
+
   // ---------- Main pane events ----------
   function attachMainEvents() {
-    // Add mode tabs
-    document.querySelectorAll('.add-tab').forEach(t => t.addEventListener('click', () => {
+    // View toggle
+    document.querySelectorAll('.view-tab').forEach(t => t.addEventListener('click', () => {
+      viewMode = t.dataset.view;
+      searchQuery = '';
+      activeFilter = 'all';
+      renderMain();
+    }));
+
+    // Image add mode tabs
+    document.querySelectorAll('.add-tab[data-mode]').forEach(t => t.addEventListener('click', () => {
+      if (t.dataset.mode === 'bulk') return; // handled by openBulkTabBtn
       addMode = t.dataset.mode;
       const card = $('addCard');
       const client = getClient(activeClientId);
@@ -1126,6 +1501,17 @@
       document.querySelectorAll('.add-tab').forEach(x => x.classList.remove('active'));
       t.classList.add('active');
       attachAddFormEvents();
+    }));
+
+    // Resource add mode tabs
+    document.querySelectorAll('.add-tab[data-resource-mode]').forEach(t => t.addEventListener('click', () => {
+      resourceAddMode = t.dataset.resourceMode;
+      const card = $('addCard');
+      const client = getClient(activeClientId);
+      card.innerHTML = renderResourceAddForm(client);
+      document.querySelectorAll('.add-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      attachResourceFormEvents();
     }));
 
     // Edit client
@@ -1137,7 +1523,9 @@
     // Delete client
     $('deleteClientBtn')?.addEventListener('click', () => {
       const c = getClient(activeClientId);
-      if (confirm(`Delete "${c.name}" and all ${c.images?.length || 0} cataloged images? This can't be undone.`)) {
+      const imgCount = c.images?.length || 0;
+      const resCount = c.resources?.length || 0;
+      if (confirm(`Delete "${c.name}" and all ${imgCount} images + ${resCount} resources? This can't be undone.`)) {
         state.clients = state.clients.filter(x => x.id !== activeClientId);
         activeClientId = state.clients[0]?.id ?? null;
         saveState();
@@ -1151,28 +1539,182 @@
     $('searchInput')?.addEventListener('input', e => {
       searchQuery = e.target.value;
       const client = getClient(activeClientId);
-      const listWrap = document.querySelector('.image-grid')?.parentElement || document.querySelector('.empty-state')?.parentElement;
-      // Re-render just the list portion
-      const lists = document.querySelectorAll('.image-grid, .empty-state');
-      lists.forEach(l => l.remove());
-      const insertAfter = $('searchInput').closest('.image-list-header');
-      insertAfter.insertAdjacentHTML('afterend', renderImageList(client.images || []));
-      attachCardEvents();
+      if (viewMode === 'resources') {
+        const lists = document.querySelectorAll('.resource-grid, .empty-state');
+        lists.forEach(l => l.remove());
+        const insertAfter = $('searchInput').closest('.image-list-header');
+        insertAfter.insertAdjacentHTML('afterend', renderResourceList(client.resources || []));
+        attachResourceCardEvents();
+      } else {
+        const lists = document.querySelectorAll('.image-grid, .empty-state');
+        lists.forEach(l => l.remove());
+        const insertAfter = $('searchInput').closest('.image-list-header');
+        insertAfter.insertAdjacentHTML('afterend', renderImageList(client.images || []));
+        attachCardEvents();
+      }
     });
 
     document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => {
       activeFilter = c.dataset.filter;
       document.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
       c.classList.add('active');
-      const lists = document.querySelectorAll('.image-grid, .empty-state');
-      lists.forEach(l => l.remove());
-      const insertAfter = $('searchInput').closest('.image-list-header');
-      insertAfter.insertAdjacentHTML('afterend', renderImageList(getClient(activeClientId).images || []));
-      attachCardEvents();
+      const client = getClient(activeClientId);
+      if (viewMode === 'resources') {
+        const lists = document.querySelectorAll('.resource-grid, .empty-state');
+        lists.forEach(l => l.remove());
+        const insertAfter = $('searchInput').closest('.image-list-header');
+        insertAfter.insertAdjacentHTML('afterend', renderResourceList(client.resources || []));
+        attachResourceCardEvents();
+      } else {
+        const lists = document.querySelectorAll('.image-grid, .empty-state');
+        lists.forEach(l => l.remove());
+        const insertAfter = $('searchInput').closest('.image-list-header');
+        insertAfter.insertAdjacentHTML('afterend', renderImageList(client.images || []));
+        attachCardEvents();
+      }
     }));
 
-    attachAddFormEvents();
-    attachCardEvents();
+    if (viewMode === 'resources') {
+      attachResourceFormEvents();
+      attachResourceCardEvents();
+    } else {
+      attachAddFormEvents();
+      attachCardEvents();
+    }
+  }
+
+  // ---------- Resource form events ----------
+  function attachResourceFormEvents() {
+    const client = getClient(activeClientId);
+
+    if (resourceAddMode === 'bulk') {
+      $('resourceBulkBtn')?.addEventListener('click', () => {
+        const raw = $('resourceBulkInput').value;
+        const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+        let added = 0;
+        client.resources = client.resources || [];
+        for (const line of lines) {
+          let url = line;
+          let name = '';
+          const sep = line.indexOf('|');
+          if (sep > 0) {
+            url = line.slice(0, sep).trim();
+            name = line.slice(sep + 1).trim();
+          }
+          if (!/^https?:\/\//.test(url)) continue;
+          const type = detectResourceType(url);
+          const resource = {
+            id: uid(),
+            url,
+            type,
+            name: name || filenameFallback(url),
+            description: '',
+            tags: '',
+            pages: '',
+            added: new Date().toISOString()
+          };
+          if (settings.displayName) resource.addedBy = settings.displayName;
+          client.resources.unshift(resource);
+          added++;
+        }
+        if (added === 0) { toast('No valid URLs found.'); return; }
+        saveState();
+        renderSidebar();
+        renderMain();
+        toast(`Added ${added} resource${added === 1 ? '' : 's'}.`);
+      });
+      return;
+    }
+
+    // Auto-detect type on URL input
+    $('resourceUrlInput')?.addEventListener('input', e => {
+      const url = e.target.value.trim();
+      if (url) {
+        const detected = detectResourceType(url);
+        $('resourceTypeInput').value = detected;
+      }
+    });
+
+    $('resourceAddBtn')?.addEventListener('click', () => {
+      const url = $('resourceUrlInput').value.trim();
+      if (!url) { toast('Paste a URL first.'); return; }
+      const resource = {
+        id: uid(),
+        url,
+        type: $('resourceTypeInput').value,
+        name: $('resourceNameInput').value.trim() || '(unnamed)',
+        description: $('resourceDescInput').value.trim(),
+        tags: $('resourceTagsInput').value.trim(),
+        pages: $('resourcePagesInput').value.trim(),
+        added: new Date().toISOString()
+      };
+      if (settings.displayName) resource.addedBy = settings.displayName;
+
+      // Duplicate check
+      client.resources = client.resources || [];
+      const existing = client.resources.find(r => r.url === url);
+      if (existing) {
+        if (!confirm(`A resource with this URL already exists ("${existing.name}"). Replace it?`)) return;
+        Object.assign(existing, {
+          type: resource.type,
+          name: resource.name,
+          description: resource.description,
+          tags: resource.tags,
+          pages: resource.pages,
+          updated: new Date().toISOString()
+        });
+        if (settings.displayName) existing.updatedBy = settings.displayName;
+        saveState();
+        renderSidebar();
+        renderMain();
+        toast('Resource updated.');
+        return;
+      }
+
+      client.resources.unshift(resource);
+      saveState();
+      renderSidebar();
+      renderMain();
+      toast('Resource added.');
+    });
+  }
+
+  function attachResourceCardEvents() {
+    document.querySelectorAll('[data-action^="resource-"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const client = getClient(activeClientId);
+        const r = (client.resources || []).find(x => x.id === btn.dataset.id);
+        if (!r) return;
+        const action = btn.dataset.action;
+        if (action === 'resource-copy-url') {
+          navigator.clipboard.writeText(r.url);
+          toast('URL copied.');
+        } else if (action === 'resource-edit') {
+          openResourceModal(r.id);
+        } else if (action === 'resource-delete') {
+          if (!confirm(`Delete "${r.name}"?`)) return;
+          client.resources = client.resources.filter(x => x.id !== r.id);
+          saveState();
+          renderSidebar();
+          renderMain();
+          toast('Resource deleted.');
+        }
+      });
+    });
+  }
+
+  function openResourceModal(id) {
+    const client = getClient(activeClientId);
+    const r = client.resources.find(x => x.id === id);
+    if (!r) return;
+    editingResourceId = id;
+    $('resourceEditUrl').value = r.url || '';
+    $('resourceEditName').value = r.name || '';
+    $('resourceEditType').value = r.type || 'other';
+    $('resourceEditDesc').value = r.description || '';
+    $('resourceEditTags').value = r.tags || '';
+    $('resourceEditPages').value = r.pages || '';
+    $('resourceModal').classList.add('show');
   }
 
   function attachAddFormEvents() {
@@ -1208,6 +1750,7 @@
           alt: $('wixAltInput').value.trim(),
           added: new Date().toISOString()
         };
+        if (settings.displayName) img.addedBy = settings.displayName;
         client.images = client.images || [];
         client.images.unshift(img);
         saveState();
@@ -1259,6 +1802,93 @@
 
       $('ghFilenameInput')?.addEventListener('input', updateGhUrl);
 
+      $('ghPushBtn')?.addEventListener('click', async () => {
+        const filename = $('ghFilenameInput').value.trim();
+        const preview = $('ghOutput').dataset.preview;
+        const btn = $('ghPushBtn');
+        const status = $('ghPushStatus');
+
+        if (!preview) { toast('Drop a file first.'); return; }
+        if (!filename) { toast('Filename is required.'); return; }
+        if (!settings.githubPat) {
+          toast('Add your GitHub PAT in Settings first.');
+          return;
+        }
+        if (!client.ghUser || !client.ghRepo) {
+          toast('This client needs a GitHub user and repo set (click "edit" next to the client name).');
+          return;
+        }
+
+        const orig = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Uploading...';
+        status.style.display = 'block';
+        status.style.background = 'rgba(0,180,177,0.08)';
+        status.style.borderLeft = '3px solid var(--teal)';
+        status.textContent = `Pushing to ${client.ghUser}/${client.ghRepo}/${filename}...`;
+
+        try {
+          // Extract base64 from data URL
+          const base64 = preview.split(',')[1];
+
+          // Check if file already exists (to get SHA for update)
+          let existingSha = null;
+          try {
+            const checkRes = await fetch(
+              `https://api.github.com/repos/${client.ghUser}/${client.ghRepo}/contents/${encodeURIComponent(filename)}`,
+              { headers: { 'Authorization': `token ${settings.githubPat}`, 'Accept': 'application/vnd.github.v3+json' } }
+            );
+            if (checkRes.ok) {
+              const existing = await checkRes.json();
+              existingSha = existing.sha;
+            }
+          } catch {}
+
+          // Upload
+          const uploadBody = {
+            message: `Add image: ${filename}${settings.displayName ? ` (by ${settings.displayName})` : ''}`,
+            content: base64
+          };
+          if (existingSha) uploadBody.sha = existingSha;
+
+          const uploadRes = await fetch(
+            `https://api.github.com/repos/${client.ghUser}/${client.ghRepo}/contents/${encodeURIComponent(filename)}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Authorization': `token ${settings.githubPat}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(uploadBody)
+            }
+          );
+
+          if (!uploadRes.ok) {
+            const err = await uploadRes.json().catch(() => ({}));
+            throw new Error(err.message || `GitHub returned ${uploadRes.status}`);
+          }
+
+          const result = await uploadRes.json();
+          status.style.background = 'rgba(0,180,177,0.12)';
+          status.style.borderLeft = '3px solid var(--teal)';
+          status.innerHTML = `<strong>✓ Uploaded.</strong> Live URL set. ${existingSha ? 'Replaced existing file.' : ''} <a href="${result.content.html_url}" target="_blank" style="color:var(--teal);">View on GitHub →</a>`;
+
+          btn.textContent = '✓ Pushed';
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = orig;
+          }, 2000);
+        } catch (err) {
+          console.error(err);
+          status.style.background = 'rgba(201,64,128,0.08)';
+          status.style.borderLeft = '3px solid var(--magenta)';
+          status.innerHTML = `<strong>Upload failed.</strong> ${escapeHtml(err.message)}<br><span style="font-size:11px; color:rgba(13,27,42,0.6);">Check: PAT has <code>repo</code> scope, repo exists, and you have write access.</span>`;
+          btn.disabled = false;
+          btn.textContent = orig;
+        }
+      });
+
       $('ghAddBtn')?.addEventListener('click', () => {
         const url = $('ghUrlPreview').value.trim();
         const filename = $('ghFilenameInput').value.trim();
@@ -1275,6 +1905,7 @@
           alt: $('ghAltInput').value.trim(),
           added: new Date().toISOString()
         };
+        if (settings.displayName) img.addedBy = settings.displayName;
         client.images = client.images || [];
         client.images.unshift(img);
         saveState();
@@ -1447,7 +2078,23 @@
           description: img.description || null,
           alt: img.alt || null,
           tags: img.tags ? img.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
-          usedOn: img.pages ? img.pages.split(',').map(s => s.trim()).filter(Boolean) : []
+          usedOn: img.pages ? img.pages.split(',').map(s => s.trim()).filter(Boolean) : [],
+          addedBy: img.addedBy || null,
+          added: img.added || null,
+          updatedBy: img.updatedBy || null,
+          updated: img.updated || null
+        })),
+        resources: (client.resources || []).map(r => ({
+          name: r.name,
+          url: r.url,
+          type: r.type,
+          description: r.description || null,
+          tags: r.tags ? r.tags.split(',').map(s => s.trim()).filter(Boolean) : [],
+          usedOn: r.pages ? r.pages.split(',').map(s => s.trim()).filter(Boolean) : [],
+          addedBy: r.addedBy || null,
+          added: r.added || null,
+          updatedBy: r.updatedBy || null,
+          updated: r.updated || null
         }))
       }, null, 2);
     } else {
@@ -1470,6 +2117,9 @@
     if (client.notes) { lines.push(`**Notes:** ${client.notes}`, ''); }
 
     lines.push(`**Total images cataloged:** ${imgs.length}`);
+    if ((client.resources || []).length) {
+      lines.push(`**Total resources cataloged:** ${client.resources.length}`);
+    }
     lines.push(`**Last updated:** ${new Date().toISOString().slice(0, 10)}`);
     lines.push('');
     lines.push('---');
@@ -1496,9 +2146,48 @@
         if (img.alt) lines.push(`- **Alt text:** ${img.alt}`);
         if (img.tags) lines.push(`- **Tags:** ${img.tags}`);
         if (img.pages) lines.push(`- **Used on:** ${img.pages}`);
+        const attrParts = [];
+        if (img.addedBy) attrParts.push(`Added by ${img.addedBy}${img.added ? ' on ' + img.added.slice(0, 10) : ''}`);
+        if (img.updatedBy) attrParts.push(`Updated by ${img.updatedBy}${img.updated ? ' on ' + img.updated.slice(0, 10) : ''}`);
+        if (attrParts.length) lines.push(`- **Attribution:** ${attrParts.join(' · ')}`);
         lines.push('');
       });
     });
+
+    // Resources section
+    const resources = client.resources || [];
+    if (resources.length) {
+      lines.push('---');
+      lines.push('');
+      lines.push(`## Resources & links (${resources.length})`);
+      lines.push('');
+      lines.push('> Non-image URLs for this client: forms, calendars, tracking pixels, dashboards, etc.');
+      lines.push('');
+
+      // Group by type
+      const byType = {};
+      resources.forEach(r => {
+        const t = r.type || 'other';
+        if (!byType[t]) byType[t] = [];
+        byType[t].push(r);
+      });
+      Object.keys(byType).sort().forEach(type => {
+        lines.push(`### ${RESOURCE_TYPE_LABELS[type] || type}`);
+        lines.push('');
+        byType[type].forEach(r => {
+          lines.push(`**${r.name || '(unnamed)'}**`);
+          lines.push(`- **URL:** \`${r.url}\``);
+          if (r.description) lines.push(`- **Description:** ${r.description}`);
+          if (r.tags) lines.push(`- **Tags:** ${r.tags}`);
+          if (r.pages) lines.push(`- **Used on:** ${r.pages}`);
+          const rAttr = [];
+          if (r.addedBy) rAttr.push(`Added by ${r.addedBy}${r.added ? ' on ' + r.added.slice(0, 10) : ''}`);
+          if (r.updatedBy) rAttr.push(`Updated by ${r.updatedBy}${r.updated ? ' on ' + r.updated.slice(0, 10) : ''}`);
+          if (rAttr.length) lines.push(`- **Attribution:** ${rAttr.join(' · ')}`);
+          lines.push('');
+        });
+      });
+    }
 
     lines.push('---');
     lines.push('');
@@ -1550,9 +2239,9 @@
   function loadSettings() {
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-      if (s) return s;
+      if (s) return { anthropicKey: '', githubPat: '', displayName: '', ...s };
     } catch {}
-    return { anthropicKey: '', displayName: '' };
+    return { anthropicKey: '', githubPat: '', displayName: '' };
   }
 
   function saveSettings() {
@@ -1575,12 +2264,14 @@
   // ---------- Settings modal ----------
   $('settingsBtn').addEventListener('click', () => {
     $('settingsAnthropicKey').value = settings.anthropicKey || '';
+    $('settingsGithubPat').value = settings.githubPat || '';
     $('settingsDisplayName').value = settings.displayName || '';
     $('settingsModal').classList.add('show');
   });
   $('settingsCancelBtn').addEventListener('click', () => $('settingsModal').classList.remove('show'));
   $('settingsSaveBtn').addEventListener('click', () => {
     settings.anthropicKey = $('settingsAnthropicKey').value.trim();
+    settings.githubPat = $('settingsGithubPat').value.trim();
     settings.displayName = $('settingsDisplayName').value.trim();
     saveSettings();
     $('settingsModal').classList.remove('show');
@@ -2193,6 +2884,36 @@
 
   // Initialize status dot on load
   updateAIStatusDot();
+
+  // Populate resource type dropdown in edit modal
+  (function() {
+    const sel = document.getElementById('resourceEditType');
+    if (sel) {
+      sel.innerHTML = RESOURCE_TYPES.map(t => `<option value="${t}">${RESOURCE_TYPE_LABELS[t]}</option>`).join('');
+    }
+  })();
+
+  // Resource edit modal handlers
+  document.getElementById('resourceEditCancel')?.addEventListener('click', () => {
+    document.getElementById('resourceModal').classList.remove('show');
+  });
+  document.getElementById('resourceEditSave')?.addEventListener('click', () => {
+    const client = getClient(activeClientId);
+    const r = (client.resources || []).find(x => x.id === editingResourceId);
+    if (!r) return;
+    r.url = document.getElementById('resourceEditUrl').value.trim();
+    r.name = document.getElementById('resourceEditName').value.trim() || '(unnamed)';
+    r.type = document.getElementById('resourceEditType').value;
+    r.description = document.getElementById('resourceEditDesc').value.trim();
+    r.tags = document.getElementById('resourceEditTags').value.trim();
+    r.pages = document.getElementById('resourceEditPages').value.trim();
+    r.updated = new Date().toISOString();
+    if (settings.displayName) r.updatedBy = settings.displayName;
+    saveState();
+    document.getElementById('resourceModal').classList.remove('show');
+    renderMain();
+    toast('Resource updated.');
+  });
 
   // ---------- Init ----------
   renderSidebar();
