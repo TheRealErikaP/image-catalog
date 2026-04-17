@@ -323,6 +323,50 @@
   }
   .backup-banner button.dismiss:hover { background: rgba(13,27,42,0.06); color: var(--navy); }
 
+  /* PAT expiration banner — three urgency levels */
+  .pat-banner {
+    background: linear-gradient(90deg, rgba(212,168,67,0.18), rgba(212,168,67,0.05));
+    border-left: 3px solid var(--gold);
+    padding: 12px 20px;
+    margin-bottom: 12px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 13px;
+  }
+  .pat-banner .msg { color: var(--navy); flex: 1; }
+  .pat-banner .msg strong { color: #8c6f10; }
+  .pat-banner button {
+    background: var(--navy); color: var(--cream); border: none;
+    padding: 7px 14px; border-radius: 4px; font-size: 12px;
+    font-weight: 500; cursor: pointer; font-family: inherit;
+    letter-spacing: 0.04em;
+  }
+  .pat-banner button:hover { background: var(--teal); color: var(--navy); }
+  .pat-banner button.dismiss {
+    background: transparent; color: rgba(13,27,42,0.5); padding: 4px 8px;
+  }
+  .pat-banner button.dismiss:hover { background: rgba(13,27,42,0.06); color: var(--navy); }
+
+  .pat-banner.urgent {
+    background: linear-gradient(90deg, rgba(201,64,128,0.15), rgba(201,64,128,0.05));
+    border-left-color: var(--magenta);
+  }
+  .pat-banner.urgent .msg strong { color: var(--magenta); }
+
+  .pat-banner.expired {
+    background: var(--magenta);
+    border-left-color: #8c1a4a;
+  }
+  .pat-banner.expired .msg,
+  .pat-banner.expired .msg strong { color: white; }
+  .pat-banner.expired button {
+    background: white; color: var(--magenta);
+  }
+  .pat-banner.expired button:hover { background: var(--cream); }
+
   /* View toggle (Images / Resources) */
   .view-toggle {
     display: flex; gap: 4px; margin-bottom: 20px; padding: 4px;
@@ -888,6 +932,13 @@
     </div>
 
     <div class="form-row">
+      <label>Token expires on <span style="font-weight:400; color:rgba(13,27,42,0.5);">— optional, leave blank for "No expiration"</span></label>
+      <input type="date" id="settingsGithubPatExpiry" style="max-width:200px;">
+      <p style="font-size:12px; color:rgba(13,27,42,0.55); margin-top:4px;">Set this if you picked an expiration when generating the token. You'll get a banner warning 14 days before it expires.</p>
+      <div id="patExpiryStatus" style="font-size:12px; margin-top:6px;"></div>
+    </div>
+
+    <div class="form-row">
       <label>Your display name <span style="font-weight:400; color:rgba(13,27,42,0.5);">— for multi-user attribution</span></label>
       <input type="text" id="settingsDisplayName" placeholder="Erika">
       <p style="font-size:12px; color:rgba(13,27,42,0.55); margin-top:4px;">Shows who added or updated each image so the team knows who owns what.</p>
@@ -1174,12 +1225,13 @@
     const main = $('mainPane');
 
     if (!activeClientId || !getClient(activeClientId)) {
-      main.innerHTML = renderBackupBanner() + `
+      main.innerHTML = renderPatBanner() + renderBackupBanner() + `
         <div class="empty-state" style="padding-top:120px">
           <div class="big">get started</div>
           <div style="max-width:420px; margin:0 auto">Create a client workspace in the sidebar. Each client gets its own image catalog that you can export for Claude to read in future chats.</div>
         </div>`;
       attachBackupBannerEvents();
+      attachPatBannerEvents();
       return;
     }
 
@@ -1187,7 +1239,7 @@
     const imgs = client.images || [];
     const resources = client.resources || [];
 
-    const header = renderBackupBanner() + `
+    const header = renderPatBanner() + renderBackupBanner() + `
       <div class="client-header">
         <div>
           <h2>${escapeHtml(client.name)}<span class="edit" id="editClient">edit</span></h2>
@@ -1637,6 +1689,7 @@
       attachCardEvents();
     }
     attachBackupBannerEvents();
+    attachPatBannerEvents();
   }
 
   // ---------- Resource form events ----------
@@ -1923,7 +1976,10 @@
 
           if (!uploadRes.ok) {
             const err = await uploadRes.json().catch(() => ({}));
-            throw new Error(err.message || `GitHub returned ${uploadRes.status}`);
+            const statusCode = uploadRes.status;
+            const e = new Error(err.message || `GitHub returned ${statusCode}`);
+            e.statusCode = statusCode;
+            throw e;
           }
 
           const result = await uploadRes.json();
@@ -1940,7 +1996,17 @@
           console.error(err);
           status.style.background = 'rgba(201,64,128,0.08)';
           status.style.borderLeft = '3px solid var(--magenta)';
-          status.innerHTML = `<strong>Upload failed.</strong> ${escapeHtml(err.message)}<br><span style="font-size:11px; color:rgba(13,27,42,0.6);">Check: PAT has <code>repo</code> scope, repo exists, and you have write access.</span>`;
+          let hint;
+          if (err.statusCode === 401) {
+            hint = 'Your GitHub token is expired or invalid. Generate a new one at <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--magenta); font-weight:600;">github.com/settings/tokens</a> and paste it into Settings.';
+          } else if (err.statusCode === 403) {
+            hint = 'Your token doesn\'t have permission for this repo. Make sure it has the <code>repo</code> scope and that you have write access.';
+          } else if (err.statusCode === 404) {
+            hint = `Can't find <code>${escapeHtml(client.ghUser)}/${escapeHtml(client.ghRepo)}</code>. Check the repo exists and the name is spelled correctly (click "edit" next to the client name).`;
+          } else {
+            hint = 'Check: PAT has <code>repo</code> scope, repo exists, and you have write access.';
+          }
+          status.innerHTML = `<strong>Upload failed.</strong> ${escapeHtml(err.message)}<br><span style="font-size:11px; color:rgba(13,27,42,0.7);">${hint}</span>`;
           btn.disabled = false;
           btn.textContent = orig;
         }
@@ -2296,9 +2362,9 @@
   function loadSettings() {
     try {
       const s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-      if (s) return { anthropicKey: '', githubPat: '', displayName: '', ...s };
+      if (s) return { anthropicKey: '', githubPat: '', githubPatExpiry: '', displayName: '', ...s };
     } catch {}
-    return { anthropicKey: '', githubPat: '', displayName: '' };
+    return { anthropicKey: '', githubPat: '', githubPatExpiry: '', displayName: '' };
   }
 
   function saveSettings() {
@@ -2322,13 +2388,16 @@
   $('settingsBtn').addEventListener('click', () => {
     $('settingsAnthropicKey').value = settings.anthropicKey || '';
     $('settingsGithubPat').value = settings.githubPat || '';
+    $('settingsGithubPatExpiry').value = settings.githubPatExpiry || '';
     $('settingsDisplayName').value = settings.displayName || '';
+    updatePatExpiryStatus();
     $('settingsModal').classList.add('show');
   });
   $('settingsCancelBtn').addEventListener('click', () => $('settingsModal').classList.remove('show'));
   $('settingsSaveBtn').addEventListener('click', () => {
     settings.anthropicKey = $('settingsAnthropicKey').value.trim();
     settings.githubPat = $('settingsGithubPat').value.trim();
+    settings.githubPatExpiry = $('settingsGithubPatExpiry').value || '';
     settings.displayName = $('settingsDisplayName').value.trim();
     saveSettings();
     $('settingsModal').classList.remove('show');
@@ -3060,6 +3129,7 @@
   // ============================================================
 
   const BACKUP_META_KEY = 'visible_catalog_backup_meta';
+  const PAT_DISMISS_KEY = 'visible_catalog_pat_dismiss';
 
   function getBackupMeta() {
     try {
@@ -3113,6 +3183,101 @@
         <button id="bannerBackupBtn">⬇ Backup now</button>
         <button class="dismiss" id="bannerDismissBtn" title="Hide for 24 hours">✕</button>
       </div>`;
+  }
+
+  // ============================================================
+  // PAT EXPIRATION TRACKING
+  // ============================================================
+
+  function daysUntilPatExpiry() {
+    if (!settings.githubPatExpiry) return null;
+    try {
+      const expiry = new Date(settings.githubPatExpiry + 'T23:59:59');
+      const now = new Date();
+      return Math.floor((expiry.getTime() - now.getTime()) / 86400000);
+    } catch { return null; }
+  }
+
+  function shouldShowPatBanner() {
+    if (!settings.githubPat) return false; // no PAT = no banner
+    const days = daysUntilPatExpiry();
+    if (days === null) return false; // no expiry set = no banner
+    // Show banner from 14 days out
+    if (days > 14) return false;
+    // Respect dismissal (stored as "days remaining when dismissed")
+    try {
+      const dismissed = JSON.parse(localStorage.getItem(PAT_DISMISS_KEY));
+      if (dismissed && typeof dismissed.atDaysRemaining === 'number' && dismissed.atDaysRemaining === days) {
+        // Dismissed at this exact day count — only re-show if it changes (e.g. next day)
+        return false;
+      }
+    } catch {}
+    return true;
+  }
+
+  function renderPatBanner() {
+    if (!shouldShowPatBanner()) return '';
+    const days = daysUntilPatExpiry();
+    let style, msg;
+    if (days < 0) {
+      style = 'pat-banner expired';
+      msg = `<strong>Your GitHub token expired ${-days} day${days === -1 ? '' : 's'} ago.</strong> Push-to-GitHub is broken. Generate a new token at github.com/settings/tokens and update Settings.`;
+    } else if (days === 0) {
+      style = 'pat-banner urgent';
+      msg = `<strong>Your GitHub token expires today.</strong> Generate a new one at github.com/settings/tokens before push-to-GitHub stops working.`;
+    } else if (days <= 3) {
+      style = 'pat-banner urgent';
+      msg = `<strong>Your GitHub token expires in ${days} day${days === 1 ? '' : 's'}.</strong> Generate a new one at github.com/settings/tokens and update Settings.`;
+    } else {
+      style = 'pat-banner';
+      msg = `<strong>Heads up:</strong> your GitHub token expires in ${days} days. Plan to regenerate it soon.`;
+    }
+    return `
+      <div class="${style}">
+        <div class="msg">${msg}</div>
+        <button id="bannerPatOpenSettings">Open Settings</button>
+        ${days >= 0 ? `<button class="dismiss" id="bannerPatDismiss" title="Hide until tomorrow">✕</button>` : ''}
+      </div>`;
+  }
+
+  function attachPatBannerEvents() {
+    document.getElementById('bannerPatOpenSettings')?.addEventListener('click', () => {
+      document.getElementById('settingsBtn').click();
+    });
+    document.getElementById('bannerPatDismiss')?.addEventListener('click', () => {
+      const days = daysUntilPatExpiry();
+      localStorage.setItem(PAT_DISMISS_KEY, JSON.stringify({ atDaysRemaining: days }));
+      document.querySelector('.pat-banner')?.remove();
+      toast('Hidden. We\'ll nudge you again tomorrow.');
+    });
+  }
+
+  function updatePatExpiryStatus() {
+    renderPatExpiryStatusInto(settings);
+  }
+
+  function renderPatExpiryStatusInto(settingsLike) {
+    const box = document.getElementById('patExpiryStatus');
+    if (!box) return;
+    if (!settingsLike.githubPatExpiry) {
+      box.innerHTML = '<span style="color:rgba(13,27,42,0.5);">No expiration set — you won\'t get warnings.</span>';
+      return;
+    }
+    try {
+      const expiry = new Date(settingsLike.githubPatExpiry + 'T23:59:59');
+      const days = Math.floor((expiry.getTime() - Date.now()) / 86400000);
+      if (days < 0) {
+        box.innerHTML = `<strong style="color:var(--magenta);">Expired ${-days}d ago</strong> — generate a new token`;
+      } else if (days <= 3) {
+        box.innerHTML = `<strong style="color:var(--magenta);">Expires in ${days} day${days === 1 ? '' : 's'}</strong> — regenerate soon`;
+      } else if (days <= 14) {
+        box.innerHTML = `<strong style="color:#8c6f10;">Expires in ${days} days</strong>`;
+      } else {
+        box.innerHTML = `<span style="color:var(--teal);">✓ Expires in ${days} days</span>`;
+      }
+    } catch {
+      box.innerHTML = '';
+    }
   }
 
   function attachBackupBannerEvents() {
@@ -3239,6 +3404,7 @@
     newBtn.addEventListener('click', () => {
       settings.anthropicKey = $('settingsAnthropicKey').value.trim();
       settings.githubPat = $('settingsGithubPat').value.trim();
+      settings.githubPatExpiry = $('settingsGithubPatExpiry').value || '';
       settings.displayName = $('settingsDisplayName').value.trim();
       saveSettings();
 
@@ -3250,18 +3416,30 @@
         saveBackupMeta(meta);
       }
 
+      // Clear PAT dismissal when PAT changes (fresh token = fresh tracking)
+      localStorage.removeItem(PAT_DISMISS_KEY);
+
       $('settingsModal').classList.remove('show');
+      renderMain(); // re-render so expiration banner updates
       toast('Settings saved.');
     });
   }
 
-  // When settings modal opens, populate the threshold field and status box
+  // When settings modal opens, populate the threshold + PAT expiry + status box
   const origSettingsBtn = document.getElementById('settingsBtn');
   origSettingsBtn?.addEventListener('click', () => {
     const meta = getBackupMeta();
     const daysInput = document.getElementById('settingsBackupDays');
     if (daysInput) daysInput.value = meta.thresholdDays || 7;
     updateBackupStatusBox();
+    updatePatExpiryStatus();
+  });
+
+  // Keep the inline expiry status live as the user changes the date
+  document.getElementById('settingsGithubPatExpiry')?.addEventListener('change', () => {
+    // Temporarily set for preview, doesn't save until Save is clicked
+    const temp = { ...settings, githubPatExpiry: document.getElementById('settingsGithubPatExpiry').value };
+    renderPatExpiryStatusInto(temp);
   });
 
   // ---------- Init ----------
