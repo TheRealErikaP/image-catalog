@@ -1017,6 +1017,49 @@
   </div>
 </div>
 
+<!-- Apply rename guide modal -->
+<div class="modal-backdrop" id="renameGuideModal">
+  <div class="modal" style="max-width:1000px;">
+    <h3>📋 Apply rename guide</h3>
+    <p class="sub">Paste a markdown rename guide (the kind Claude generates after auditing a catalog). The tool parses it, matches entries to your catalog by URL fragment, and proposes catalog-only changes — names, descriptions, deletions of duplicates. Nothing in GitHub is touched.</p>
+
+    <div id="renameGuideStep1">
+      <div class="form-row">
+        <label>Paste the markdown guide</label>
+        <textarea id="renameGuideInput" rows="10" placeholder="Paste the full markdown document here..."></textarea>
+      </div>
+      <div style="padding:12px 16px; background:rgba(0,180,177,0.08); border-left:3px solid var(--teal); border-radius:4px; font-size:13px; margin-bottom:12px;">
+        <strong>What this looks for:</strong>
+        <ul style="margin:6px 0 0 18px; padding:0; line-height:1.6;">
+          <li><code>## ✅ ALREADY CORRECTLY NAMED</code> — verifies these match your catalog</li>
+          <li><code>## 🔧 KNOWN DUPLICATES</code> — proposes renames + duplicate-merges</li>
+          <li><code>## 🚨 ONE PHOTO MISSING</code> — proposes adding new entries</li>
+          <li><code>## 🎭 ACTIVITY / SCENE PHOTOS</code> — confirms keeping current names (no action)</li>
+        </ul>
+      </div>
+      <div style="padding:12px 16px; background:rgba(212,168,67,0.1); border-left:3px solid var(--gold); border-radius:4px; font-size:13px; margin-bottom:12px;">
+        <strong>Safety net:</strong> A backup downloads automatically before any changes are applied. Restore via Settings if results are wrong.
+      </div>
+    </div>
+
+    <div id="renameGuideStep2" style="display:none;">
+      <div id="renameGuideSummary" style="margin-bottom:14px;"></div>
+      <div id="renameGuideSections" style="max-height:60vh; overflow-y:auto; border:1px solid var(--line); border-radius:6px; padding:12px; background:white;"></div>
+    </div>
+
+    <div id="renameGuideStep3" style="display:none;">
+      <div id="renameGuideResult"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="renameGuideCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="renameGuideParseBtn">Parse &amp; preview</button>
+      <button class="btn btn-primary" id="renameGuideApplyBtn" style="display:none;">Apply selected changes</button>
+      <button class="btn btn-primary" id="renameGuideCloseBtn" style="display:none;">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Bulk upload from computer modal -->
 <div class="modal-backdrop" id="bulkUploadModal">
   <div class="modal" style="max-width:920px;">
@@ -1344,6 +1387,7 @@
         </div>
         <div class="header-actions">
           <button class="btn btn-secondary" id="aiBulkFixBtn" style="background:linear-gradient(135deg, var(--teal) 0%, var(--magenta) 100%); color:white; border:none;">⚡ AI fix all</button>
+          <button class="btn btn-secondary" id="renameGuideBtn">📋 Apply rename guide</button>
           <button class="btn btn-secondary" id="exportBtn">Export for Claude</button>
           <button class="btn btn-danger" id="deleteClientBtn">Delete client</button>
         </div>
@@ -3702,6 +3746,482 @@
     const temp = { ...settings, githubPatExpiry: document.getElementById('settingsGithubPatExpiry').value };
     renderPatExpiryStatusInto(temp);
   });
+
+  // ============================================================
+  // APPLY RENAME GUIDE — parse markdown audit doc, preview changes, apply
+  // ============================================================
+
+  let renameGuideProposals = []; // [{ section, action, imageId, currentName, currentUrl, newName, newDesc, deleteId, addUrl, addName, addDesc, apply: true|false, note }]
+
+  function attachRenameGuideButton() {
+    const btn = document.getElementById('renameGuideBtn');
+    if (!btn) return;
+    btn.addEventListener('click', () => openRenameGuideModal());
+  }
+
+  function openRenameGuideModal() {
+    if (!activeClientId) return;
+    document.getElementById('renameGuideStep1').style.display = 'block';
+    document.getElementById('renameGuideStep2').style.display = 'none';
+    document.getElementById('renameGuideStep3').style.display = 'none';
+    document.getElementById('renameGuideParseBtn').style.display = '';
+    document.getElementById('renameGuideApplyBtn').style.display = 'none';
+    document.getElementById('renameGuideCloseBtn').style.display = 'none';
+    document.getElementById('renameGuideCancelBtn').style.display = '';
+    document.getElementById('renameGuideInput').value = '';
+    renameGuideProposals = [];
+    document.getElementById('renameGuideModal').classList.add('show');
+  }
+
+  document.getElementById('renameGuideCancelBtn').addEventListener('click', () => {
+    document.getElementById('renameGuideModal').classList.remove('show');
+  });
+  document.getElementById('renameGuideCloseBtn').addEventListener('click', () => {
+    document.getElementById('renameGuideModal').classList.remove('show');
+    renderSidebar();
+    renderMain();
+  });
+
+  // Match a fragment (e.g. "2d2ffb_366e814803aa") or a filename to images in current client.
+  // Returns array of matches.
+  function matchImagesByFragment(fragment, client) {
+    if (!fragment) return [];
+    const cleanFrag = fragment.replace(/[`'"]/g, '').replace(/\.\.\.$/, '').trim();
+    if (!cleanFrag) return [];
+    return (client.images || []).filter(img => {
+      const url = (img.url || '').toLowerCase();
+      const filename = (img.filename || '').toLowerCase();
+      const f = cleanFrag.toLowerCase();
+      return url.includes(f) || filename.includes(f) || (filename === f);
+    });
+  }
+
+  function parseRenameGuide(markdown) {
+    const client = getClient(activeClientId);
+    const proposals = [];
+
+    // Split into sections by H2 headers
+    const sections = markdown.split(/^## /m);
+
+    sections.forEach(section => {
+      const firstLine = section.split('\n')[0] || '';
+      const lower = firstLine.toLowerCase();
+
+      // ---- Section: ALREADY CORRECTLY NAMED ----
+      if (lower.includes('already correctly named') || lower.includes('correctly named')) {
+        // Parse table rows: | Visible Name | Identity | URL filename |
+        const rows = section.split('\n').filter(l => l.trim().startsWith('|') && !l.match(/^\|[\s-]+\|/));
+        rows.forEach(row => {
+          const cells = row.split('|').map(c => c.trim()).filter(Boolean);
+          if (cells.length < 3) return;
+          if (cells[0].toLowerCase().includes('visible name')) return; // header
+          const visibleName = cells[0];
+          const identity = cells[1];
+          const urlCell = cells[2];
+
+          // Extract fragment from things like "wix `2d2ffb_366e814803aa...`" or "github `Chatterjee_Headshot.jpg`"
+          const fragMatch = urlCell.match(/`([^`]+)`/);
+          if (!fragMatch) return;
+          const fragment = fragMatch[1].replace(/\.\.\./g, '');
+
+          const matches = matchImagesByFragment(fragment, client);
+          if (matches.length === 0) {
+            proposals.push({
+              section: 'verify-named',
+              action: 'no-match',
+              note: `No catalog match for "${visibleName}" (fragment: ${fragment})`,
+              apply: false
+            });
+          } else if (matches.length === 1) {
+            const m = matches[0];
+            const nameMatches = (m.name || '').toLowerCase().trim() === visibleName.toLowerCase().trim();
+            proposals.push({
+              section: 'verify-named',
+              action: nameMatches ? 'verified-ok' : 'rename',
+              imageId: m.id,
+              currentName: m.name,
+              currentDesc: m.description,
+              currentUrl: m.url,
+              newName: visibleName,
+              newDesc: identity,
+              note: nameMatches ? 'Name already correct.' : 'Catalog has wrong name — guide says it should be: ' + visibleName,
+              apply: !nameMatches // only apply if a change is needed
+            });
+          } else {
+            proposals.push({
+              section: 'verify-named',
+              action: 'ambiguous',
+              note: `Multiple catalog matches (${matches.length}) for fragment "${fragment}" → "${visibleName}". Skipping; resolve manually.`,
+              apply: false
+            });
+          }
+        });
+      }
+
+      // ---- Section: KNOWN DUPLICATES ----
+      else if (lower.includes('known duplicates') || lower.includes('duplicates')) {
+        // Each subsection starts with ### "..." → **Person**
+        const subSections = section.split(/^### /m).slice(1);
+        subSections.forEach(sub => {
+          const subLines = sub.split('\n');
+          const heading = subLines[0] || '';
+          // Try to extract a "newName" from "→ **Person Name**" pattern OR from "Rename Visible entry to: `Name`"
+          let newName = null;
+          const arrowMatch = heading.match(/→\s*\*\*([^*]+)\*\*/);
+          if (arrowMatch) newName = arrowMatch[1].trim();
+
+          let newNameOverride = null;
+          const renameToMatch = sub.match(/\*\*Rename Visible entry to:\*\*\s*`?([^`\n]+)`?/);
+          if (renameToMatch) newNameOverride = renameToMatch[1].replace(/[`*]/g, '').trim();
+
+          let recommendedName = null;
+          const recMatch = sub.match(/\*\*Recommended Visible name:\*\*\s*`?([^`\n]+)`?/);
+          if (recMatch) recommendedName = recMatch[1].replace(/[`*]/g, '').trim();
+
+          // Look for GitHub URL(s) in this subsection — could be "GitHub URL: `name.jpg`" or "GitHub URLs: `a.jpg` AND `b.jpg`"
+          const urlMatches = [...sub.matchAll(/`([a-zA-Z0-9_\-.%]+\.(?:jpg|jpeg|png|gif|webp|avif|JPEG|JPG|PNG))`/g)].map(m => m[1]);
+          const uniqueUrls = [...new Set(urlMatches)];
+
+          // Detect the duplicate-merge case (multiple URLs mentioned)
+          const isMerge = uniqueUrls.length >= 2 ||
+                          /TWO entries|duplicates!|delete one|delete duplicate/i.test(sub);
+
+          if (isMerge && uniqueUrls.length >= 2) {
+            // Find catalog matches for both
+            const groups = uniqueUrls.map(u => ({ url: u, matches: matchImagesByFragment(u, client) }));
+            const allMatches = groups.flatMap(g => g.matches);
+
+            if (allMatches.length === 0) {
+              proposals.push({
+                section: 'duplicates',
+                action: 'no-match',
+                note: `Duplicate group "${heading.replace(/[*\n]/g, '').slice(0, 80)}" — none of these URLs found in catalog: ${uniqueUrls.join(', ')}`,
+                apply: false
+              });
+            } else if (allMatches.length === 1) {
+              proposals.push({
+                section: 'duplicates',
+                action: 'rename',
+                imageId: allMatches[0].id,
+                currentName: allMatches[0].name,
+                currentUrl: allMatches[0].url,
+                newName: recommendedName || newNameOverride || newName || allMatches[0].name,
+                note: `Only one of the two duplicate URLs is in your catalog. Renaming the one that exists.`,
+                apply: true
+              });
+            } else {
+              // Multiple matches — propose merging: keep the first, delete the rest
+              const keep = allMatches[0];
+              const removes = allMatches.slice(1);
+              proposals.push({
+                section: 'duplicates',
+                action: 'merge',
+                imageId: keep.id,
+                currentName: keep.name,
+                currentUrl: keep.url,
+                newName: recommendedName || newNameOverride || newName || keep.name,
+                deleteIds: removes.map(r => r.id),
+                deletedNames: removes.map(r => r.name),
+                deletedUrls: removes.map(r => r.url),
+                note: `Merge ${allMatches.length} duplicate entries into one. Keeps the first match, removes ${removes.length} other${removes.length === 1 ? '' : 's'}. Renames kept entry.`,
+                apply: true
+              });
+            }
+          } else {
+            // Simple rename case (one URL, one new name)
+            const finalName = newNameOverride || newName || recommendedName;
+            const url = uniqueUrls[0];
+            if (!url || !finalName) return;
+            const matches = matchImagesByFragment(url, client);
+            if (matches.length === 0) {
+              proposals.push({
+                section: 'duplicates',
+                action: 'no-match',
+                note: `Rename target "${url}" → "${finalName}" — not found in catalog.`,
+                apply: false
+              });
+            } else if (matches.length === 1) {
+              proposals.push({
+                section: 'duplicates',
+                action: 'rename',
+                imageId: matches[0].id,
+                currentName: matches[0].name,
+                currentUrl: matches[0].url,
+                newName: finalName,
+                note: 'Single rename.',
+                apply: true
+              });
+            } else {
+              proposals.push({
+                section: 'duplicates',
+                action: 'ambiguous',
+                note: `Multiple catalog matches for "${url}" — manual resolution needed.`,
+                apply: false
+              });
+            }
+          }
+        });
+      }
+
+      // ---- Section: ONE PHOTO MISSING / PHOTOS NEEDED / MISSING FROM YOUR ----
+      else if (lower.includes('missing from your') || lower.includes('one photo missing') || lower.includes('missing visible catalog') || lower.includes('add this')) {
+        // Look for a URL pattern + a "Name" + "description"
+        const urlMatch = section.match(/(?:URL:?\s*\*?\*?)\s*([`*]*)(https?:\/\/[^\s`*\n]+)/);
+        const nameMatch = section.match(/name\s*\*\*\s*"?([^"*\n]+)"?/i) ||
+                          section.match(/with the name\s*\*\*"?([^"*\n]+)"?\*\*/i);
+        const descMatch = section.match(/description\s*"([^"]+)"/i);
+
+        if (urlMatch && nameMatch) {
+          const url = urlMatch[2].trim();
+          const name = nameMatch[1].trim();
+          const desc = descMatch ? descMatch[1].trim() : '';
+
+          // Already exists?
+          const existing = matchImagesByFragment(url, client);
+          if (existing.length > 0) {
+            proposals.push({
+              section: 'add-missing',
+              action: 'already-exists',
+              imageId: existing[0].id,
+              currentName: existing[0].name,
+              currentUrl: existing[0].url,
+              newName: name,
+              note: `"${name}" already in catalog as "${existing[0].name}". Will rename if applied.`,
+              apply: existing[0].name !== name
+            });
+          } else {
+            proposals.push({
+              section: 'add-missing',
+              action: 'add',
+              addUrl: url,
+              addName: name,
+              addDesc: desc,
+              note: `New entry to add.`,
+              apply: true
+            });
+          }
+        }
+      }
+
+      // ---- Section: ACTIVITY / SCENE PHOTOS — informational only ----
+      else if (lower.includes('activity') || lower.includes('scene photos') || lower.includes('keep descriptive')) {
+        // Just count them, no action proposed
+        const urlsInSection = [...section.matchAll(/`([a-zA-Z0-9_\-.%]+\.(?:jpg|jpeg|png|gif|webp|avif|JPEG|JPG|PNG))`/g)].length;
+        if (urlsInSection > 0) {
+          proposals.push({
+            section: 'activity',
+            action: 'info',
+            note: `${urlsInSection} activity/scene photos identified — no changes proposed (these keep their descriptive names per the guide).`,
+            apply: false
+          });
+        }
+      }
+    });
+
+    return proposals;
+  }
+
+  document.getElementById('renameGuideParseBtn').addEventListener('click', () => {
+    const md = document.getElementById('renameGuideInput').value;
+    if (!md.trim()) {
+      toast('Paste a guide document first.');
+      return;
+    }
+    renameGuideProposals = parseRenameGuide(md);
+    renderRenameGuidePreview();
+    document.getElementById('renameGuideStep1').style.display = 'none';
+    document.getElementById('renameGuideStep2').style.display = 'block';
+    document.getElementById('renameGuideParseBtn').style.display = 'none';
+    document.getElementById('renameGuideApplyBtn').style.display = '';
+  });
+
+  function renderRenameGuidePreview() {
+    const summary = document.getElementById('renameGuideSummary');
+    const sectionsEl = document.getElementById('renameGuideSections');
+
+    const counts = {
+      'verify-named': renameGuideProposals.filter(p => p.section === 'verify-named').length,
+      'duplicates': renameGuideProposals.filter(p => p.section === 'duplicates').length,
+      'add-missing': renameGuideProposals.filter(p => p.section === 'add-missing').length,
+      'activity': renameGuideProposals.filter(p => p.section === 'activity').length
+    };
+    const willApply = renameGuideProposals.filter(p => p.apply).length;
+
+    summary.innerHTML = `
+      <div style="padding:14px 18px; background:rgba(0,180,177,0.08); border-left:3px solid var(--teal); border-radius:4px; font-size:13px;">
+        <strong>${willApply} change${willApply === 1 ? '' : 's'}</strong> ready to apply (uncheck any you don't want).
+        Verified: ${counts['verify-named']} · Duplicates: ${counts['duplicates']} · Add: ${counts['add-missing']} · Activity (info only): ${counts['activity']}
+      </div>`;
+
+    const groupedSections = ['verify-named', 'duplicates', 'add-missing', 'activity'];
+    const labels = {
+      'verify-named': '✅ Already correctly named',
+      'duplicates': '🔧 Known duplicates',
+      'add-missing': '🚨 Missing entries to add',
+      'activity': '🎭 Activity photos (info)'
+    };
+
+    sectionsEl.innerHTML = groupedSections.map(sectionKey => {
+      const items = renameGuideProposals.filter(p => p.section === sectionKey);
+      if (items.length === 0) return '';
+      return `
+        <div style="margin-bottom:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:6px; border-bottom:2px solid var(--line); margin-bottom:10px;">
+            <strong style="font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:0.04em;">${labels[sectionKey]} <span style="color:rgba(13,27,42,0.5);">(${items.length})</span></strong>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-secondary toggle-section-all" data-section="${sectionKey}" data-set="true" style="font-size:11px; padding:3px 8px;">All</button>
+              <button class="btn btn-secondary toggle-section-all" data-section="${sectionKey}" data-set="false" style="font-size:11px; padding:3px 8px;">None</button>
+            </div>
+          </div>
+          ${items.map((p, i) => renderRenameGuideRow(p, renameGuideProposals.indexOf(p))).join('')}
+        </div>
+      `;
+    }).join('');
+
+    // Wire up checkboxes + select-all
+    sectionsEl.querySelectorAll('.proposal-toggle').forEach(cb => {
+      cb.addEventListener('change', e => {
+        const idx = parseInt(e.target.dataset.idx);
+        renameGuideProposals[idx].apply = e.target.checked;
+        // Update summary count without full rerender
+        const willApply = renameGuideProposals.filter(p => p.apply).length;
+        summary.querySelector('strong').textContent = `${willApply} change${willApply === 1 ? '' : 's'}`;
+      });
+    });
+    sectionsEl.querySelectorAll('.toggle-section-all').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const section = btn.dataset.section;
+        const setTo = btn.dataset.set === 'true';
+        renameGuideProposals.forEach(p => {
+          if (p.section === section && (p.action === 'rename' || p.action === 'merge' || p.action === 'add' || p.action === 'already-exists')) {
+            p.apply = setTo;
+          }
+        });
+        renderRenameGuidePreview();
+      });
+    });
+  }
+
+  function renderRenameGuideRow(p, idx) {
+    const canApply = ['rename', 'merge', 'add', 'already-exists'].includes(p.action);
+    const checkboxHtml = canApply
+      ? `<input type="checkbox" class="proposal-toggle" data-idx="${idx}" ${p.apply ? 'checked' : ''} style="margin-top:2px; width:16px; height:16px; flex-shrink:0;">`
+      : `<span style="width:16px; flex-shrink:0;"></span>`;
+
+    let body = '';
+    if (p.action === 'rename') {
+      body = `
+        <div style="font-size:12px; line-height:1.5;">
+          <div><strong>Rename:</strong> "${escapeHtml(p.currentName || '(unnamed)')}" → "<strong style="color:var(--teal);">${escapeHtml(p.newName)}</strong>"</div>
+          <div style="color:rgba(13,27,42,0.55); font-family:'JetBrains Mono',monospace; font-size:10px; margin-top:2px;">${escapeHtml((p.currentUrl || '').slice(-60))}</div>
+        </div>`;
+    } else if (p.action === 'merge') {
+      body = `
+        <div style="font-size:12px; line-height:1.5;">
+          <div><strong>Merge ${p.deleteIds.length + 1} entries into 1:</strong></div>
+          <div style="margin-left:12px; margin-top:3px;">
+            ✓ Keep "<strong style="color:var(--teal);">${escapeHtml(p.newName)}</strong>" (was "${escapeHtml(p.currentName || '(unnamed)')}")
+          </div>
+          ${p.deletedNames.map((n, i) => `
+            <div style="margin-left:12px; color:var(--magenta);">✗ Delete "${escapeHtml(n || '(unnamed)')}" <span style="color:rgba(13,27,42,0.55); font-family:monospace; font-size:10px;">${escapeHtml((p.deletedUrls[i] || '').slice(-50))}</span></div>
+          `).join('')}
+        </div>`;
+    } else if (p.action === 'add') {
+      body = `
+        <div style="font-size:12px; line-height:1.5;">
+          <div><strong style="color:var(--teal);">+ Add:</strong> ${escapeHtml(p.addName)}</div>
+          ${p.addDesc ? `<div style="color:rgba(13,27,42,0.7); margin-top:2px;">${escapeHtml(p.addDesc)}</div>` : ''}
+          <div style="color:rgba(13,27,42,0.55); font-family:'JetBrains Mono',monospace; font-size:10px; margin-top:2px;">${escapeHtml((p.addUrl || '').slice(-70))}</div>
+        </div>`;
+    } else if (p.action === 'already-exists') {
+      body = `
+        <div style="font-size:12px; line-height:1.5;">
+          <div><strong>Already in catalog:</strong> "${escapeHtml(p.currentName)}" — ${p.apply ? `rename to "<strong style="color:var(--teal);">${escapeHtml(p.newName)}</strong>"` : 'no change'}</div>
+        </div>`;
+    } else if (p.action === 'verified-ok') {
+      body = `<div style="font-size:12px; color:rgba(13,27,42,0.6);">✓ ${escapeHtml(p.currentName)} — name correct, no action.</div>`;
+    } else {
+      body = `<div style="font-size:12px; color:rgba(13,27,42,0.6); font-style:italic;">${escapeHtml(p.note)}</div>`;
+    }
+
+    return `
+      <div style="display:flex; gap:10px; padding:8px 10px; border-radius:4px; background:${p.apply && canApply ? 'rgba(0,180,177,0.04)' : 'transparent'}; border:1px solid ${p.apply && canApply ? 'rgba(0,180,177,0.2)' : 'transparent'}; margin-bottom:4px;">
+        ${checkboxHtml}
+        <div style="flex:1; min-width:0;">${body}</div>
+      </div>`;
+  }
+
+  document.getElementById('renameGuideApplyBtn').addEventListener('click', async () => {
+    const client = getClient(activeClientId);
+    if (!client) return;
+
+    // Auto-backup first
+    try { downloadBackup(); } catch {}
+
+    let renamed = 0, merged = 0, added = 0, deletedTotal = 0;
+    const toApply = renameGuideProposals.filter(p => p.apply);
+
+    for (const p of toApply) {
+      if (p.action === 'rename' || p.action === 'already-exists') {
+        const img = (client.images || []).find(i => i.id === p.imageId);
+        if (img) {
+          img.name = p.newName;
+          if (p.newDesc && !img.description) img.description = p.newDesc;
+          img.updated = new Date().toISOString();
+          if (settings.displayName) img.updatedBy = settings.displayName;
+          renamed++;
+        }
+      } else if (p.action === 'merge') {
+        const keep = (client.images || []).find(i => i.id === p.imageId);
+        if (keep) {
+          keep.name = p.newName;
+          keep.updated = new Date().toISOString();
+          if (settings.displayName) keep.updatedBy = settings.displayName;
+        }
+        client.images = (client.images || []).filter(i => !p.deleteIds.includes(i.id));
+        deletedTotal += p.deleteIds.length;
+        merged++;
+      } else if (p.action === 'add') {
+        client.images = client.images || [];
+        const newImg = {
+          id: uid(),
+          url: p.addUrl,
+          source: detectSource(p.addUrl),
+          name: p.addName,
+          description: p.addDesc || '',
+          tags: '',
+          pages: '',
+          alt: '',
+          added: new Date().toISOString()
+        };
+        if (settings.displayName) newImg.addedBy = settings.displayName;
+        client.images.unshift(newImg);
+        added++;
+      }
+    }
+
+    saveState();
+
+    // Show result
+    document.getElementById('renameGuideStep2').style.display = 'none';
+    document.getElementById('renameGuideStep3').style.display = 'block';
+    document.getElementById('renameGuideApplyBtn').style.display = 'none';
+    document.getElementById('renameGuideCloseBtn').style.display = '';
+    document.getElementById('renameGuideCancelBtn').style.display = 'none';
+    document.getElementById('renameGuideResult').innerHTML = `
+      <div style="padding:18px 22px; background:rgba(0,180,177,0.1); border-left:3px solid var(--teal); border-radius:4px; font-size:14px; line-height:1.7;">
+        <strong style="font-size:16px;">✓ Done.</strong><br>
+        ${renamed} renamed · ${merged} merged (${deletedTotal} duplicates removed) · ${added} added.<br>
+        <span style="font-size:12px; color:rgba(13,27,42,0.65); margin-top:6px; display:inline-block;">A backup downloaded automatically before these changes. Restore via Settings if anything went wrong.</span>
+      </div>`;
+  });
+
+  // Hook button attachment into renderMain cycle
+  const _origAttachMainEvents2 = attachMainEvents;
+  attachMainEvents = function() {
+    _origAttachMainEvents2.apply(this, arguments);
+    attachRenameGuideButton();
+  };
 
   // ============================================================
   // BULK UPLOAD FROM COMPUTER — multi-file → optional AI describe → push → catalog
